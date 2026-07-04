@@ -1,0 +1,22 @@
+services:
+  dev-rag:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./chroma_db:/app/chroma_db
+      - ./graph_db:/app/graph_db
+      - ./data:/app/data
+    environment:
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+      CHROMA_DB_PATH: "/app/chroma_db"
+      GRAPH_DB_PATH: "/app/graph_db/knowledge_graph.json"
+      SQLITE_DB_PATH: "/app/data/dev_rag.db"
+      SEARCH_MODE: "hybrid"
+      RERANKER_ENABLED: "true"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

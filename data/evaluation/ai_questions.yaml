@@ -1,0 +1,139 @@
+# dev-rag AI domain evaluation questions
+# Enabled after RAG-Driven Generative AI (Rothman) and/or
+# A Simple Guide to RAG (Kimothi) are ingested.
+#
+# This domain covers RAG architecture, LLM patterns, evaluation,
+# and AI engineering — meta questions about building the system
+# you are using to answer them.
+
+# ---------------------------------------------------------------------------
+# FACTUAL (ai-001, ai-002)
+# ---------------------------------------------------------------------------
+
+- id: ai-001
+  question: "What is the difference between naïve RAG, advanced RAG, and modular RAG?"
+  domain: ai
+  category: comparison
+  failure_mode: single_concept_bias
+  expected_source: null
+  expected_chunk_contains:
+    - "naïve"
+    - "advanced"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Core RAG taxonomy question. All three types should appear in results.
+    Tests whether the AI corpus retrieves the full progression rather
+    than just describing one type.
+
+- id: ai-002
+  question: "What is the difference between RAG and fine-tuning and when should each be used?"
+  domain: ai
+  category: comparison
+  failure_mode: single_concept_bias
+  expected_source: null
+  expected_chunk_contains:
+    - "fine-tuning"
+    - "RAG"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Fundamental AI engineering decision. Answer should give concrete
+    criteria for choosing between the two approaches, not just define
+    them separately. Directly relevant to dev-rag's own design decisions.
+
+# ---------------------------------------------------------------------------
+# ARCHITECTURE (ai-003, ai-004)
+# ---------------------------------------------------------------------------
+
+- id: ai-003
+  question: "What chunking strategies produce the best retrieval quality and what are the tradeoffs between them?"
+  domain: ai
+  category: architecture
+  failure_mode: description_vs_decision_support
+  expected_source: null
+  expected_chunk_contains: []
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: true
+  notes: >
+    Directly validates dev-rag's own ingest pipeline decisions (ADR-013).
+    If the corpus returns concrete tradeoffs between fixed-size, semantic,
+    and structure-aware chunking, it's providing genuine decision support.
+    Cross-references both Rothman and Kimothi.
+
+- id: ai-004
+  question: "How does a reranker improve RAG retrieval quality and when does it not help?"
+  domain: ai
+  category: architecture
+  failure_mode: description_vs_decision_support
+  expected_source: null
+  expected_chunk_contains:
+    - "rerank"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Directly validates dev-rag's ADR-012 reranker decision. The answer
+    should include conditions where reranking helps (large candidate sets,
+    diverse corpus) and where it doesn't (small corpus, already precise
+    first-pass retrieval). Meta question — asking dev-rag to validate
+    its own architecture.
+
+# ---------------------------------------------------------------------------
+# EVALUATION (ai-005, ai-006)
+# ---------------------------------------------------------------------------
+
+- id: ai-005
+  question: "What metrics should be used to evaluate a RAG system and what does each measure?"
+  domain: ai
+  category: factual
+  failure_mode: basic_semantic_mismatch
+  expected_source: null
+  expected_chunk_contains:
+    - "retrieval"
+    - "generation"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Directly relevant to dev-rag's eval harness design. Should surface
+    Retrieval@k, MRR, faithfulness, relevance, and answer correctness.
+    Validates whether our eval strategy aligns with published best practices.
+
+- id: ai-006
+  question: "How do you use human feedback to improve a RAG system over time?"
+  domain: ai
+  category: architecture
+  failure_mode: description_vs_decision_support
+  expected_source: null
+  expected_chunk_contains: []
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Covers Rothman's standout chapter on adaptive RAG with human feedback.
+    Relevant to a future enhancement where real query patterns from Claude
+    Code sessions feed back into the eval harness question set.
+
+# ---------------------------------------------------------------------------
+# SECURITY / RELIABILITY (ai-007)
+# ---------------------------------------------------------------------------
+
+- id: ai-007
+  question: "What techniques reduce hallucination in RAG systems and how do you measure whether they are working?"
+  domain: ai
+  category: security
+  failure_mode: production_vs_tutorial_confusion
+  expected_source: null
+  expected_chunk_contains:
+    - "hallucination"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: true
+  notes: >
+    Production reliability question. Should surface grounding techniques,
+    source attribution, and the negative-precision metric. Directly maps
+    to our no_answer eval question category and the hallucination_rate metric.

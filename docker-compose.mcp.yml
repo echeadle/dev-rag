@@ -1,0 +1,44 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# dev-rag-mcp  —  add this service to your existing docker-compose.yml
+#
+# The MCP server runs in two modes depending on how Claude Code connects:
+#
+#   stdio (default) — Claude Code spawns the process directly; no port needed.
+#   http            — Claude Code connects over HTTP/SSE; use the service below.
+#
+# For purely local dev (stdio mode) you don't need this service at all.
+# Add it when you want:
+#   - Multiple Claude Code sessions sharing one MCP server
+#   - Argos (or other agents) calling the RAG corpus remotely
+#   - CI/staging environment access
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Your existing services (reference only — keep your own config) ──────────
+  # rag-api:
+  #   build: .
+  #   ports: ["8000:8000"]
+  #   ...
+
+  # ── MCP server (HTTP/SSE mode) ─────────────────────────────────────────────
+  dev-rag-mcp:
+    build:
+      context: ./mcp            # folder containing mcp_server.py + pyproject.toml
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9000:9000"  # bind localhost only — not exposed externally
+    environment:
+      DEV_RAG_BASE_URL: "http://rag-api:8000"   # internal Docker network name
+      DEV_RAG_API_KEY: "${DEV_RAG_API_KEY:-}"   # optional; set in .env
+      DEV_RAG_TIMEOUT: "30"
+    depends_on:
+      - rag-api
+    command: ["python", "mcp_server.py", "--http", "--host", "0.0.0.0", "--port", "9000"]
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import httpx; httpx.get('http://localhost:9000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

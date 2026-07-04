@@ -1,0 +1,88 @@
+# dev-rag Python evaluation questions
+# Add questions here as Python corpus grows
+
+- id: python-001
+  question: "What is the difference between __new__ and __init__ and when would you use __new__?"
+  domain: python
+  category: factual
+  failure_mode: basic_semantic_mismatch
+  expected_source: null
+  expected_chunk_contains: []
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+
+- id: python-002
+  question: "When should you use a generator instead of building a list and what are the tradeoffs?"
+  domain: python
+  category: comparison
+  failure_mode: description_vs_decision_support
+  expected_source: null
+  expected_chunk_contains: []
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+
+- id: python-003
+  question: "How does the GIL affect CPU-bound versus I/O-bound concurrency in Python?"
+  domain: python
+  category: architecture
+  failure_mode: single_concept_bias
+  expected_source: null
+  expected_chunk_contains:
+    - "GIL"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+
+# ---------------------------------------------------------------------------
+# REFACTORING (python-004, python-005, python-006)
+# Enabled after Five Lines of Code (Clausen) is ingested.
+# Tests retrieval of concrete refactoring guidance over abstract principles.
+# ---------------------------------------------------------------------------
+
+- id: python-004
+  question: "What is the five-line rule and why does limiting function length improve code quality?"
+  domain: python
+  category: factual
+  failure_mode: basic_semantic_mismatch
+  expected_source: "five-lines-of-code.pdf"
+  expected_chunk_contains:
+    - "five"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Core concept from Five Lines of Code (Clausen). If this doesn't
+    retrieve a clear explanation of the rule and its rationale, basic
+    retrieval from this book is broken. Update expected_source to match
+    actual ingested filename.
+
+- id: python-005
+  question: "When should you extract a method versus keeping code inline and what are the tradeoffs?"
+  domain: python
+  category: architecture
+  failure_mode: description_vs_decision_support
+  expected_source: null
+  expected_chunk_contains: []
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Decision-support refactoring question. Answer should give concrete
+    criteria for the decision, not just define what method extraction is.
+
+- id: python-006
+  question: "How do you refactor a nested if statement to remove the else branch?"
+  domain: python
+  category: troubleshooting
+  failure_mode: symptom_without_cause
+  expected_source: null
+  expected_chunk_contains: []
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Practical refactoring technique from Five Lines of Code. Tests whether
+    the system retrieves concrete actionable steps rather than abstract
+    advice about conditionals.

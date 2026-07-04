@@ -1,0 +1,5 @@
+# Place your PDF books here for ingestion.
+# This directory is gitignored — your books stay local.
+# Example:
+#   data/books/docker-deep-dive.pdf
+#   data/books/fluent-python.pdf

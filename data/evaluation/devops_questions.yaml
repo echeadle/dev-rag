@@ -1,0 +1,497 @@
+# dev-rag DevOps evaluation questions
+# Schema and full question set: planning/dev-rag-evaluation-strategy.md
+
+- id: devops-001
+  question: "What is the production-safe way to store secrets in Docker Compose and why are environment variables not sufficient?"
+  domain: devops
+  category: security
+  failure_mode: production_vs_tutorial_confusion
+  expected_source: null   # populate with your actual PDF filename after ingestion
+  expected_chunk_contains:
+    - "secrets"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    OBS-003: set expected_source to the actual ingested filename (e.g.
+    "docker-deep-dive.pdf") before the first baseline eval run, so
+    Retrieval@k and MRR compute. Leave null until the book is ingested.
+
+- id: devops-002
+  question: "What is the difference between bridge, host, and overlay networks in Docker, and when should each be used?"
+  domain: devops
+  category: comparison
+  failure_mode: single_concept_bias
+  expected_source: null
+  expected_chunk_contains:
+    - "bridge"
+    - "host"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+
+- id: devops-003
+  question: "Why is running a container as root considered a security risk and what are the recommended alternatives?"
+  domain: devops
+  category: security
+  failure_mode: best_practice_vs_default_behavior
+  expected_source: null
+  expected_chunk_contains:
+    - "root"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+
+- id: devops-004
+  question: "At what point does an organization outgrow Docker Compose and need Kubernetes?"
+  domain: devops
+  category: architecture
+  failure_mode: description_vs_decision_support
+  expected_source: null
+  expected_chunk_contains: []
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: true
+
+- id: devops-005
+  question: "What techniques are commonly used to achieve zero-downtime deployments and what tradeoffs does each approach have?"
+  domain: devops
+  category: architecture
+  failure_mode: single_technique_bias
+  expected_source: null
+  expected_chunk_contains: []
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: true
+
+- id: devops-006
+  question: "According to your sources, what are the most important container security recommendations?"
+  domain: devops
+  category: source_specific
+  failure_mode: provenance_failure
+  # OBS-003: set this to your actual ingested filename, e.g. "docker-deep-dive.pdf"
+  # Without a value here, source_precision and Retrieval@k never compute.
+  expected_source: "docker-deep-dive.pdf"
+  expected_chunk_contains:
+    - "security"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Update expected_source to match the exact filename returned by your
+    /search results after ingestion. Check with: search_devops("container security")
+
+- id: devops-007
+  question: "What are the best practices for managing Podman rootless containers in production?"
+  domain: devops
+  category: negative
+  failure_mode: hallucination_via_retrieval
+  expected_source: null
+  expected_chunk_contains: []
+  no_answer: true
+  requires_graph: false
+  requires_multi_source: false
+  notes: "Negative test — Podman content should not be in the DevOps corpus."
+
+- id: devops-008
+  question: "What are the complete steps to configure a custom Docker bridge network?"
+  domain: devops
+  category: chunk_boundary
+  failure_mode: chunker_splits_procedure
+  expected_source: null
+  expected_chunk_contains:
+    - "docker network create"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+
+# ---------------------------------------------------------------------------
+# FACTUAL (devops-009, devops-010)
+# Tests basic retrieval and semantic matching against clear single-source answers.
+# ---------------------------------------------------------------------------
+
+- id: devops-009
+  question: "What is a Docker image layer and how does layer caching work?"
+  domain: devops
+  category: factual
+  failure_mode: basic_semantic_mismatch
+  expected_source: null
+  expected_chunk_contains:
+    - "layer"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Fundamental Docker concept. If this doesn't retrieve a clear explanation
+    of layers and caching, basic semantic retrieval is broken.
+
+- id: devops-010
+  question: "What is the difference between a Docker image and a Docker container?"
+  domain: devops
+  category: factual
+  failure_mode: basic_semantic_mismatch
+  expected_source: null
+  expected_chunk_contains:
+    - "image"
+    - "container"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    The most fundamental Docker distinction. Should be answered correctly
+    by any adequately ingested Docker corpus.
+
+# ---------------------------------------------------------------------------
+# TROUBLESHOOTING (devops-011, devops-012)
+# Tests retrieval of operational guidance for real problems.
+# ---------------------------------------------------------------------------
+
+- id: devops-011
+  question: "Why would a Docker container exit immediately after starting and how do you diagnose it?"
+  domain: devops
+  category: troubleshooting
+  failure_mode: symptom_without_cause
+  expected_source: null
+  expected_chunk_contains: []
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Common real-world problem. Tests whether retrieval surfaces diagnostic
+    guidance (check logs, entrypoint issues) not just a definition of exit codes.
+
+- id: devops-012
+  question: "A container can reach the internet but cannot connect to another container on the same host — what are the likely causes?"
+  domain: devops
+  category: troubleshooting
+  failure_mode: symptom_without_cause
+  expected_source: null
+  expected_chunk_contains: []
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Networking troubleshooting question. Answer should involve network mode,
+    same network membership, and DNS resolution between containers. Tests
+    whether retrieval surfaces operational causes rather than network definitions.
+
+# ---------------------------------------------------------------------------
+# COMPARISON (devops-013, devops-014)
+# Tests multi-concept retrieval — both sides of a comparison must appear.
+# ---------------------------------------------------------------------------
+
+- id: devops-013
+  question: "What is the difference between COPY and ADD instructions in a Dockerfile and when should each be used?"
+  domain: devops
+  category: comparison
+  failure_mode: single_concept_bias
+  expected_source: null
+  expected_chunk_contains:
+    - "COPY"
+    - "ADD"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Classic Docker comparison. Both COPY and ADD must appear in results.
+    If only COPY is returned, single-concept bias is confirmed.
+
+- id: devops-014
+  question: "What are the differences between Docker volumes, bind mounts, and tmpfs mounts and when should you use each?"
+  domain: devops
+  category: comparison
+  failure_mode: single_concept_bias
+  expected_source: null
+  expected_chunk_contains:
+    - "volume"
+    - "bind"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Three-way comparison — all three storage types should appear in results.
+    Good test of whether the retrieval pipeline handles multi-concept queries.
+
+# ---------------------------------------------------------------------------
+# SECURITY (devops-015)
+# Tests production security guidance over tutorial defaults.
+# ---------------------------------------------------------------------------
+
+- id: devops-015
+  question: "What Docker capabilities should be dropped by default and why does the principle of least privilege apply to containers?"
+  domain: devops
+  category: security
+  failure_mode: production_vs_tutorial_confusion
+  expected_source: null
+  expected_chunk_contains:
+    - "cap"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Production security question. Answer should reference --cap-drop=ALL
+    and specific capabilities needed. Tutorials rarely cover this level
+    of detail — tests whether the corpus goes beyond the basics.
+
+# ---------------------------------------------------------------------------
+# CROSS-DOCUMENT (devops-016, devops-017)
+# Tests whether retrieval synthesises across multiple source documents.
+# ---------------------------------------------------------------------------
+
+- id: devops-016
+  question: "How do you build a production-ready Docker setup for a Python FastAPI application including secrets, networking, and health checks?"
+  domain: devops
+  category: cross_document
+  failure_mode: single_source_bias
+  expected_source: null
+  expected_chunk_contains: []
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: true
+  notes: >
+    Intentionally broad — secrets, networking, and health checks may each
+    live in different chapters or books. Tests whether search_all or
+    multi-chunk retrieval surfaces content from multiple sources.
+
+- id: devops-017
+  question: "What are the security implications of exposing Docker ports and how does it interact with firewall rules on the host?"
+  domain: devops
+  category: cross_document
+  failure_mode: single_source_bias
+  expected_source: null
+  expected_chunk_contains: []
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: true
+  notes: >
+    Spans Docker networking and host security — likely across multiple
+    chapters. Tests cross-document synthesis on a production concern
+    that tutorials almost never cover correctly.
+
+# ---------------------------------------------------------------------------
+# NEGATIVE / NO-ANSWER (devops-018, devops-019)
+# Tests hallucination-via-retrieval — corpus should NOT answer these.
+# ---------------------------------------------------------------------------
+
+- id: devops-018
+  question: "How do you configure Nomad job scheduling for a containerised workload?"
+  domain: devops
+  category: negative
+  failure_mode: hallucination_via_retrieval
+  expected_source: null
+  expected_chunk_contains: []
+  no_answer: true
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Nomad is not Docker — should return empty or below-threshold results.
+    If the system returns Docker Swarm or Kubernetes chunks as a substitute,
+    that is a hallucination-via-retrieval failure.
+
+- id: devops-019
+  question: "What are the Terraform best practices for managing AWS ECS task definitions?"
+  domain: devops
+  category: negative
+  failure_mode: hallucination_via_retrieval
+  expected_source: null
+  expected_chunk_contains: []
+  no_answer: true
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Terraform and ECS are out of corpus scope. Should return empty results.
+    A false positive here (returning Docker content as if it answers the
+    question) is a dangerous failure mode for a production guidance tool.
+
+# ---------------------------------------------------------------------------
+# CHUNK BOUNDARY (devops-020)
+# Tests whether multi-step procedures survive chunking intact.
+# ---------------------------------------------------------------------------
+
+- id: devops-020
+  question: "What are the complete steps to build, tag, and push a Docker image to a registry?"
+  domain: devops
+  category: chunk_boundary
+  failure_mode: chunker_splits_procedure
+  expected_source: null
+  expected_chunk_contains:
+    - "docker build"
+    - "docker push"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Three-step procedure (build, tag, push) that may be split across chunks.
+    If the top result contains docker build but not docker push, the chunker
+    split the procedure and chunk_size or overlap needs to increase.
+
+# ---------------------------------------------------------------------------
+# ADVERSARIAL PARAPHRASE (devops-para-001a/b/c)
+# Three phrasings of the same question — all should return the same top chunk.
+# Tests embedding model robustness to vocabulary variation.
+# ---------------------------------------------------------------------------
+
+- id: devops-para-001a
+  question: "How do Docker secrets work?"
+  domain: devops
+  category: adversarial_paraphrase
+  failure_mode: vocabulary_mismatch
+  paraphrase_group: docker-secrets-mechanism
+  expected_source: null
+  expected_chunk_contains:
+    - "secrets"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: "Paraphrase group anchor — direct, minimal phrasing."
+
+- id: devops-para-001b
+  question: "What is the mechanism for passing sensitive data to containers securely?"
+  domain: devops
+  category: adversarial_paraphrase
+  failure_mode: vocabulary_mismatch
+  paraphrase_group: docker-secrets-mechanism
+  expected_source: null
+  expected_chunk_contains:
+    - "secrets"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: "Paraphrase — no Docker keyword, describes the function not the feature."
+
+- id: devops-para-001c
+  question: "Explain Docker's secret management system and how it differs from environment variables."
+  domain: devops
+  category: adversarial_paraphrase
+  failure_mode: vocabulary_mismatch
+  paraphrase_group: docker-secrets-mechanism
+  expected_source: null
+  expected_chunk_contains:
+    - "secrets"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Paraphrase — adds comparison framing. If this returns different top
+    chunks than para-001a, the embedding model has a vocabulary robustness
+    problem with comparison-framed queries.
+
+# ---------------------------------------------------------------------------
+# SOURCE-SPECIFIC (devops-021)
+# Tests provenance — right content from the right book.
+# ---------------------------------------------------------------------------
+
+- id: devops-021
+  question: "According to Docker Deep Dive, what is the recommended way to structure a multi-stage Dockerfile?"
+  domain: devops
+  category: source_specific
+  failure_mode: provenance_failure
+  expected_source: "docker-deep-dive.pdf"
+  expected_chunk_contains:
+    - "multi-stage"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Explicitly names the source. If the correct content is returned from
+    a different source, or if the expected_source doesn't rank first,
+    the provenance tracking or source weighting has a problem.
+    Update expected_source to match actual ingested filename.
+
+# ---------------------------------------------------------------------------
+# ARCHITECTURE (devops-022)
+# Rounds out to 25 questions — decision-support content.
+# ---------------------------------------------------------------------------
+
+- id: devops-022
+  question: "What are the tradeoffs between running one process per container versus multiple processes in a single container?"
+  domain: devops
+  category: architecture
+  failure_mode: description_vs_decision_support
+  expected_source: null
+  expected_chunk_contains: []
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Classic Docker design question with a nuanced answer — one process per
+    container is the convention but not an absolute rule. Tests whether
+    the corpus returns decision-support guidance rather than just the
+    "one process per container" rule without explanation.
+
+- id: devops-023
+  question: "What is the difference between ENTRYPOINT and CMD in a Dockerfile and how do they interact when both are specified?"
+  domain: devops
+  category: comparison
+  failure_mode: single_concept_bias
+  expected_source: null
+  expected_chunk_contains:
+    - "ENTRYPOINT"
+    - "CMD"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Classic Docker question with a subtle answer — CMD provides default
+    arguments that can be overridden at runtime, ENTRYPOINT sets the
+    executable that always runs. The interaction when both are specified
+    (CMD becomes arguments to ENTRYPOINT) is where tutorials often fall
+    short. Tests whether the corpus returns the complete nuanced explanation.
+
+# ---------------------------------------------------------------------------
+# DOCKER COMPOSE SPECIFIC (devops-024, devops-025, devops-026)
+# Enabled after A Developer's Essential Guide to Docker Compose is ingested.
+# Tests Compose-specific depth that Docker Deep Dive doesn't cover fully.
+# ---------------------------------------------------------------------------
+
+- id: devops-024
+  question: "What is the correct way to handle service startup dependencies with health checks in Docker Compose?"
+  domain: devops
+  category: troubleshooting
+  failure_mode: symptom_without_cause
+  expected_source: null
+  expected_chunk_contains:
+    - "depends_on"
+    - "healthcheck"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Tests Compose-specific dependency ordering. The naive depends_on only
+    waits for container start, not service readiness. The answer should
+    cover condition: service_healthy. Good test of whether the Compose
+    book adds depth beyond Docker Deep Dive.
+
+- id: devops-025
+  question: "What is the difference between env_file and environment in a Docker Compose file and when should each be used?"
+  domain: devops
+  category: comparison
+  failure_mode: single_concept_bias
+  expected_source: null
+  expected_chunk_contains:
+    - "env_file"
+    - "environment"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Practical Compose configuration question. Both keys must appear in
+    results. Tests whether the corpus returns the nuanced production
+    answer (env_file for secrets, environment for non-sensitive config)
+    rather than just defining both terms separately.
+
+- id: devops-026
+  question: "How do you scale a specific service in Docker Compose and what are the limitations compared to Kubernetes?"
+  domain: devops
+  category: architecture
+  failure_mode: description_vs_decision_support
+  expected_source: null
+  expected_chunk_contains:
+    - "scale"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: true
+  notes: >
+    Cross-document question — scaling syntax from the Compose book,
+    Kubernetes comparison likely from Docker Deep Dive or another source.
+    Tests whether the system synthesises across both books.
