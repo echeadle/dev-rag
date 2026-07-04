@@ -216,5 +216,15 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# others
 *.zip
 
+# dev-rag runtime data & stores (do NOT commit generated data / corpus)
+chroma_db/
+graph_db/
+eval/results/
+data/books/
+*.db            # SQLite FTS5 store — confirm actual filename
+# NOTE: keep data/evaluation/*.yaml tracked — those are source, not generated
+Archive/*
