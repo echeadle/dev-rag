@@ -134,6 +134,27 @@ against real ingested content before relying on BM25 for exact-syntax recall.
 If flag-syntax precision is required, evaluate `unicode61` with custom
 `tokenchars` or an unstemmed secondary column as an alternative tokenizer.
 
+**✅ OBS-006 RESOLVED — ablation run 2026-07-05, decision: KEEP `porter ascii`**
+
+All six ablation queries run against the live `/search` endpoint (Docker Deep
+Dive corpus, 311 chunks) in dense vs sparse vs hybrid. Findings:
+
+| Query | Outcome |
+|---|---|
+| `--network=host flag behaviour` | all modes agree on the bridge/host-networking chunk — flag *words* suffice |
+| `COPY --chown directive` | dense correct; sparse noisy (no `chown` in corpus → OR-terms noise); **hybrid stayed correct** — RRF is robust to a bad sparse list |
+| `docker compose secrets: syntax` | **sparse WIN** — dense drifted to Compose-naming trivia; BM25's exact `secrets` match put the real secrets chunk first, and hybrid promoted it |
+| `BuildKit secret mount syntax` | all modes agree (secrets chunk) |
+| `permission denied when bind mounting` | weak in ALL modes — corpus gap (book doesn't cover bind-mount permission errors), not a tokenizer issue |
+| `containerd vs dockerd architecture` | dense strong; hybrid returned the most coherent cluster (0041/0042/0046) |
+
+Verdict: hybrid ≥ dense on every query (one clear win, never worse) and
+robust when one channel misfires — BM25 earns its place. No query failed
+because of stemming or punctuation stripping, so `unicode61 tokenchars`
+would add nothing today. Revisit ONLY if the Phase 4 eval shows failures
+on flag-syntax questions. Latency: sparse ~4 ms, dense/hybrid ~105 ms
+(CPU query embedding dominates).
+
 ---
 
 ### 2. BM25 retrieval function
