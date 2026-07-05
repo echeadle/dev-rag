@@ -1,6 +1,12 @@
 # dev-rag & Related Projects — To-Do List
 
-**Last updated:** June 2026 (Athens)  
+**Last updated:** July 2026 (home)
+
+> **Status note:** The OPUS architecture review is re-verified and essentially
+> absorbed (see `docs/reviews/OPUS-REVIEW-VERIFICATION.md`) — 11/12 findings
+> resolved at contract level. A small hardening pass (`review/opus-fixes`:
+> test-gate fix + `runner.py` cleanup + headroom removal) is the only review
+> work left. Real next work is implementing the stubbed pipeline.
 
 ---
 
@@ -16,9 +22,18 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
 - [ ] **Phase 4b** — Grow eval question set to 25 with expected_source populated
 - [ ] **Phase 5** — Python domain
 - [ ] **Phase 5b** — Unified search_all ranking via reranker
-- [ ] **Phase 6** — Headroom compression
+- [ ] ~~**Phase 6** — Headroom compression~~ **REMOVED from the build path**
+  (2026-07-04) — deferred to nice-to-have; see **Deferred** below.
+  *(Phase numbers 7/8 left unchanged to stay aligned with
+  `IMPLEMENTATION-ORDER.md` — apply the same "Phase 6 removed" edit there.)*
 - [ ] **Phase 7** — pgvector migration, benchmark delta vs ChromaDB
 - [ ] **Phase 8** — GraphRAG (after baseline established)
+
+### Review follow-ups (from OPUS-REVIEW-VERIFICATION, do at the mapped phase)
+- [ ] **OBS-009** — wire real Chroma/SQLite counts into `/health` `store_parity`
+  (currently hardcoded `0`, so it always reports in-sync). Do before Phase 7.
+- [ ] **OBS-003** — replace placeholder `expected_source` (`docker-deep-dive.pdf`)
+  with real ingested filenames (folds into Phase 4b).
 
 ---
 
@@ -110,8 +125,8 @@ Extend existing `ansible-personal` project with a new
 - [ ] Lynis security audit integration (optional)
 - [ ] Trivy Docker image scanning (optional)
 
-**Timing:** Start after dev-rag Phase 1 is running.  
-**Book connection:** Real-world Ansible chapter for the Python AI agent book.  
+**Timing:** Start after dev-rag Phase 1 is running.
+**Book connection:** Real-world Ansible chapter for the Python AI agent book.
 **Corpus connection:** Ansible books go into the DevOps corpus in dev-rag.
 
 ---
@@ -134,13 +149,32 @@ Extend existing `ansible-personal` project with a new
 
 ---
 
+## Deferred / Nice-to-have (revisit only after a working, evaluated RAG baseline)
+
+### Context compression (Headroom) — REMOVED from active build 2026-07-04
+RAG works fine without compression; this is a token/cost optimisation, not a
+requirement. Revisit only after the core retrieve → rerank → serialise pipeline
+is working and evaluated.
+
+- `mcp/compress.py` stays a no-op stub for now; the `headroom` dependency and the
+  `compress` extra were removed from `pyproject.toml` so `uv sync` resolves cleanly.
+- **GOTCHA when picking this up:** the compression library is **`headroom-ai`** on
+  PyPI (you *import* it as `headroom`; currently ~0.28.0) — **NOT** the bare
+  **`headroom`**, which is an unrelated command-line agent stuck at 0.2.7. The old
+  unsatisfiable `headroom>=0.3.0` pin was exactly that mix-up. Add `headroom-ai` as
+  an **optional** extra, never a core dep.
+- Then verify `headroom-ai`'s real `compress()` API against
+  `planning/headroom-integration-spec.md`, and add an un-mocked smoke test (OBS-008)
+  before relying on it.
+
+---
+
 ## Backlog — dev-rag Future Phases
 
 - [ ] GraphRAG spec — write when Phase 4 baseline is established
 - [ ] Multi-source coverage metric in eval harness
 - [ ] Graph-lift metric (after GraphRAG is implemented)
 - [ ] Cross-domain `search_all` ranking improvements beyond Phase 5b
-- [ ] Headroom API verification smoke test before Phase 6
 
 ---
 
@@ -149,9 +183,12 @@ Extend existing `ansible-personal` project with a new
 - [ ] **Eval harness threshold** — is 25 questions enough or do deltas
   need more? Revisit after first `--compare` run.
 - [ ] **Structure-aware chunking** — needed or not? Determined by whether
-  chunk_boundary eval questions (008, 020) pass or fail.
+  chunk_boundary eval questions (008, 020) pass or fail. *(Review OBS-007: a
+  structure-aware `ingest-pipeline-spec.md` exists; `ingest.py` docstring says
+  out-of-scope for first build — reconcile which is authoritative.)*
 - [ ] **porter ascii tokenizer** — does flag-level BM25 matching actually
   work? Determined by ablation queries after hybrid search is live.
+  *(Review OBS-006: still open; may move to `unicode61` + custom `tokenchars`.)*
 - [ ] **Python book titles** — confirm from shelf before ingesting Python domain.
 - [ ] **Ansible book titles** — confirm from shelf before ingesting DevOps corpus.
 
