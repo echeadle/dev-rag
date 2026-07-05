@@ -106,6 +106,14 @@ def test_all_results_carry_canonical_relevance_score(client):
             assert r["relevance_score"] is not None, f"missing in {mode}"
 
 
+def test_collections_report_real_chroma_counts(client):
+    data = client.get("/collections").json()
+    by_name = {c["name"]: c for c in data["collections"]}
+    assert set(by_name) == set(settings.valid_domains)
+    assert by_name["devops"] == {"name": "devops", "documents": 3, "status": "ready"}
+    assert by_name["travel"] == {"name": "travel", "documents": 0, "status": "empty"}
+
+
 def test_health_reports_real_counts_and_detects_drift(client):
     data = client.get("/health").json()
     assert data["store_parity"]["devops"] == {

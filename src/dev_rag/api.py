@@ -227,10 +227,15 @@ async def get_document(document_id: str, domain: str = ""):
 
 @app.get("/collections")
 async def list_collections():
-    # TODO: return ChromaDB collection stats per domain
+    """Per-domain chunk counts from ChromaDB (missing collections count 0)."""
+    counts = _chroma_counts()
     return {
         "collections": [
-            {"name": domain, "documents": 0, "status": "empty"}
+            {
+                "name": domain,
+                "documents": counts[domain],
+                "status": "ready" if counts[domain] else "empty",
+            }
             for domain in settings.valid_domains
         ]
     }
