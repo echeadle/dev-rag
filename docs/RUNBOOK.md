@@ -124,7 +124,17 @@ curl -s -X POST http://127.0.0.1:8000/search \
   -H 'Content-Type: application/json' \
   -d '{"query": "How do restart policies work?", "domain": "devops", "n_results": 3}' \
   | python3 -m json.tool
+
+# single-channel comparison (ablation-style): add "search_mode"
+curl -s -X POST http://127.0.0.1:8000/search \
+  -H 'Content-Type: application/json' \
+  -d '{"query": "How do restart policies work?", "domain": "devops", "n_results": 3, "search_mode": "sparse"}' \
+  | python3 -m json.tool
 ```
+
+No-curl option: with the server running, open http://127.0.0.1:8000/docs —
+FastAPI's auto-generated interactive docs let you fire searches from the
+browser (expand POST /search → "Try it out").
 
 `relevance_score` is the canonical ranking field. Its scale is **per-mode**
 (hybrid: RRF ~0.01–0.033 · dense: cosine 0–1 · sparse: BM25 unbounded) —
