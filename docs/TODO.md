@@ -20,7 +20,9 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
   deferred OUT of 1a — tracked in IMPLEMENTATION-ORDER.md under "Ingest
   Structure + Enrich (DEFERRED)", gated on FBL-004; NOT the same as Phase 1b below
 - [ ] **Phase 1b** — Wire up MCP server, ingest Docker Deep Dive, first query
-- [ ] **Phase 2** — Hybrid search (BM25 + dense + RRF)
+- [x] **Phase 2** — Hybrid search (BM25 + dense + RRF) ✅ 2026-07-05 (pending
+  merge). /search live in 3 modes w/ canonical relevance_score; OBS-006 ablation:
+  hybrid ≥ dense everywhere, porter ascii kept; e2e tests on the real endpoint.
 - [ ] **Phase 3** — Cross-encoder reranker (bge-reranker-v2-m3)
 - [ ] **Phase 4** — Evaluation harness running, first baseline established
 - [ ] **Phase 4b** — Grow eval question set to 25 with expected_source populated
@@ -34,15 +36,15 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
 - [ ] **Phase 8** — GraphRAG (after baseline established)
 
 ### Review follow-ups (from OPUS-REVIEW-VERIFICATION, do at the mapped phase)
-- [ ] **OBS-009** — wire real Chroma/SQLite counts into `/health` `store_parity`
-  (currently hardcoded `0`, so it always reports in-sync). Do before Phase 7.
+- [x] **OBS-009** — ✅ 2026-07-05 (Phase 2): `/health` reports real per-domain
+  counts; drift flips status to `degraded` (proven by e2e test).
 - [ ] **OBS-003** — replace placeholder `expected_source` (`docker-deep-dive.pdf`)
   with real ingested filenames (folds into Phase 4b).
 
 ### Review follow-ups (from Fable review 2026-07-05, `docs/reviews/FABLE-REVIEW-2026-07-05.md`)
-- [ ] **FBL-001** — `chunks_fts` has no UPDATE trigger: ADR-006 Strategy B upserts
-  chunk content and marks removals `status='deleted'` via UPDATE, so BM25 would serve
-  stale/deleted content. Add UPDATE trigger (new `003` migration) at Phase 2 start.
+- [x] **FBL-001** — ✅ 2026-07-05 (Phase 2 stage 0): migration
+  `003_fts_update_trigger.sql` keeps chunks_fts correct on UPDATE (content
+  rewrite + status flips), tests in tests/test_migrations.py.
 - [ ] **FBL-002** — `eval/scorer.py` matches `expected_source` inconsistently:
   Retrieval@k uses exact list membership, MRR uses substring. Pick one (exact match
   on ingested filename) when populating `expected_source` in Phase 4b.

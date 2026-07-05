@@ -24,9 +24,9 @@ FTS5, BGE-M3 embeddings, bge-reranker-v2-m3, NetworkX, Docker Compose, MCP serve
   uv sync                  # resolves cleanly
   ```
 
-## Tests — the full suite is 70 (as of Phase 1a close, 2026-07-05)
+## Tests — the full suite is 106 (as of Phase 2 close, 2026-07-05)
 ```
-uv run pytest              # expect 70 passed (48 in tests/ + 22 in mcp/tests/)
+uv run pytest              # expect 106 passed (84 in tests/ + 22 in mcp/tests/)
 ```
 The 22 `mcp/tests/` include the fixtures/consumer-alignment tests guarding the two
 High review findings (OBS-001/002). **If a bare run reports only the `tests/`
@@ -46,28 +46,32 @@ Ingest tests never load real BGE-M3 — the model is always mocked.
 - **Session close:** update `current_context.md` before ending a session (a Stop
   hook checks this).
 
-## Current state — ingest real, retrieval still stubs (important context)
-**Implemented and proven (Phase 1a, 2026-07-05):** `src/dev_rag/ingest/` — the
-thin-slice pipeline (extract via pymupdf4llm → clean → chunk 1500/200 → embed
-BGE-M3 dense → load → verify), run as `python -m dev_rag.ingest.pipeline`.
-Docker Deep Dive is ingested: 311 chunks in ChromaDB `devops_content` + SQLite +
-FTS5 with count parity. Stage 3 (LLM structure) and Stage 5 (LLM enrich) are
-deferred to Phase 1b.
+## Current state — ingest + hybrid search real (important context)
+**Implemented and proven:**
+- **Phase 1a (2026-07-05):** `src/dev_rag/ingest/` — thin-slice pipeline
+  (extract via pymupdf4llm → clean → chunk 1500/200 → embed BGE-M3 dense →
+  load → verify), run as `python -m dev_rag.ingest.pipeline`. Docker Deep Dive
+  ingested: 311 chunks, ChromaDB + SQLite + FTS5 at parity. LLM structure/
+  enrich deferred (see IMPLEMENTATION-ORDER.md "Ingest Structure + Enrich").
+- **Phase 2 (2026-07-05):** `retrieve.py` (dense), `retrieve_sparse.py` (BM25,
+  OR-joined terms), `retrieve_hybrid.py` (RRF), `/search` live in all three
+  modes with canonical `relevance_score` (per-mode scales — see api.py
+  docstring), `/health` real parity counts. E2E tests hit the real endpoint.
+  OBS-006 resolved: porter ascii kept (ablation in hybrid-search-spec.md).
 
 These are still stubs, not working code:
-- `src/dev_rag/api.py` `/search` → returns `{"results": []}` (contract only)
-- `src/dev_rag/retrieve*.py`, `reranker.py`, `graph.py`, `agent.py` (`agent.py` is
-  unwired — nothing imports it), `mcp/compress.py` (no-op)
+- `reranker.py` (Phase 3), `graph.py`, `agent.py` (unwired — nothing imports
+  it), `mcp/compress.py` (no-op). MCP server calls the real API now but is
+  not yet smoke-tested end-to-end.
 So contract/fixture/test guarantees are **correct by construction**, not yet proven
 against a live pipeline. When implementing a stub, follow the matching `planning/`
 spec and add an **end-to-end test hitting the real endpoint** — hand-written
 fixtures can't guard a producer that doesn't exist yet.
 
 ## Known open items (not bugs to fix blindly)
-- **OBS-006** FTS5 `porter ascii` tokenizer: decide via ablation on ingested data.
-- **OBS-003** eval `expected_source`: placeholders must become real filenames post-ingest.
-- **OBS-009** `/health` store-parity counts are hardcoded `0` — wire real counts
-  before relying on drift detection.
+- **OBS-003** eval `expected_source`: placeholders must become real filenames
+  post-ingest (Phase 4b, with FBL-002 + FBL-005 scorer fixes — see docs/TODO.md).
+- *(OBS-006 and OBS-009 resolved in Phase 2 — see "Current state" above.)*
 - **Context compression (Headroom):** deferred / removed from the build path — see
   the "Deferred" section in `docs/TODO.md`. **Do NOT re-add `headroom`** — the real
   library is `headroom-ai` (imported as `headroom`); bare `headroom` is an unrelated

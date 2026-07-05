@@ -1,6 +1,6 @@
 # dev-rag Runbook — how to run everything
 
-**Last verified:** 2026-07-05 (Phase 1a close). Every command in the "works
+**Last verified:** 2026-07-05 (Phase 2 close). Every command in the "works
 today" sections was run and verified on that date. **Update this file whenever
 a phase adds or changes a runnable surface** — a runbook that drifts is worse
 than none.
@@ -22,7 +22,7 @@ uv sync                    # resolves cleanly; installs CPU torch (pinned index)
 ## 2. Run the tests
 
 ```bash
-uv run pytest              # expect 70 passed (48 tests/ + 22 mcp/tests/)
+uv run pytest              # expect 106 passed (84 tests/ + 22 mcp/tests/)
 ```
 
 Fast (~6s): tests never load the real embedding model or touch the real stores.
@@ -106,22 +106,46 @@ sqlite3 data/dev_rag.db \
    FROM chunks_fts WHERE chunks_fts MATCH 'restart policies' LIMIT 3;"
 ```
 
-## 5. What does NOT run yet (do not trust these surfaces)
+## 5. Run the search API (Phase 2)
+
+```bash
+uv run uvicorn dev_rag.api:app --host 127.0.0.1 --port 8000
+```
+
+Boots instantly; BGE-M3 loads lazily on the FIRST search (~10 s), after
+which queries take ~105 ms (hybrid/dense) or ~4 ms (sparse).
+
+```bash
+# health — real per-domain ChromaDB/SQLite parity (OBS-009)
+curl -s http://127.0.0.1:8000/health | python3 -m json.tool
+
+# search — search_mode: hybrid (default) | dense | sparse
+curl -s -X POST http://127.0.0.1:8000/search \
+  -H 'Content-Type: application/json' \
+  -d '{"query": "How do restart policies work?", "domain": "devops", "n_results": 3}' \
+  | python3 -m json.tool
+```
+
+`relevance_score` is the canonical ranking field. Its scale is **per-mode**
+(hybrid: RRF ~0.01–0.033 · dense: cosine 0–1 · sparse: BM25 unbounded) —
+never compare scores across modes. `dense_rank`/`sparse_rank` in hybrid
+responses show what each channel contributed.
+
+## 6. What does NOT run yet (do not trust these surfaces)
 
 | Surface | State |
 |---|---|
-| `POST /search` (FastAPI) | **Stub** — always returns `{"results": []}`. Phase 2. |
-| `GET /health` store parity | **Lies** — hardcoded 0s, always "ok" (OBS-009). |
-| MCP server (`mcp/mcp_server.py`) | Code exists but calls the stub API — nothing useful until Phase 2. |
-| Eval harness (`eval/run_eval.py`) | Runs against the stub `/search`; no baseline until Phase 4. |
-| `docker compose up` | Compose files predate Phase 1a and are **unverified**; ingest runs directly via `uv run`, no containers needed. |
+| MCP server (`mcp/mcp_server.py`) | Calls the now-real API but **not yet smoke-tested end-to-end** — wire + verify in the MCP phase. |
+| Reranker | Phase 3 — `/search` returns RRF order; `reranker_enabled` setting has no effect yet. |
+| Eval harness (`eval/run_eval.py`) | No baseline until Phase 4; scorer has known scale bugs (FBL-002, FBL-005). |
+| `docker compose up` | Compose files predate Phase 1a and are **unverified**; everything runs directly via `uv run`, no containers needed. |
 | GraphRAG / agent.py / compression | Stubs, deferred (see docs/TODO.md). |
 
 Architecture doc §8 ("Running the System") still shows the aspirational
-Docker-based commands — **this runbook supersedes it** until the API phase
-lands and §8 is rewritten against reality.
+Docker-based commands — **this runbook supersedes it** until §8 is
+rewritten against reality.
 
-## 6. Where things live
+## 7. Where things live
 
 ```
 data/books/        source PDFs (yours; gitignored)
