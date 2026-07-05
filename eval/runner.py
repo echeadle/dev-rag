@@ -9,12 +9,12 @@ OBS-004 fixes:
 import httpx
 from dataclasses import dataclass
 
+from dev_rag.settings import settings
+
 RAG_BASE = "http://localhost:8000"
 
 # OBS-004: gate graph endpoint off until /search/graph is implemented
 GRAPH_ENDPOINT_AVAILABLE = False
-# OBS-004: cross-domain search_all requires explicit fan-out, not domain=None
-CROSS_DOMAIN_ENDPOINT_AVAILABLE = False
 
 
 @dataclass
@@ -71,9 +71,9 @@ async def _run_cross_domain(
     query: str,
     n_results: int,
 ) -> list[dict]:
-    """Fan-out to all three domains for cross-domain questions."""
+    """Fan-out to every valid domain for cross-domain questions."""
     import asyncio
-    domains = ["devops", "travel", "python"]
+    domains = settings.valid_domains
     per_domain = max(1, n_results // len(domains))
 
     tasks = [
