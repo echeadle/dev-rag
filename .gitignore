@@ -231,3 +231,8 @@ data/books/
 Archive/*
 resume.sh
 current_context.md
+data/raw
+data/cleaned
+data/structured
+data/chunks 
+data/enriched/ 
