@@ -76,6 +76,8 @@ fixtures can't guard a producer that doesn't exist yet.
   scope before implementing `graph.py`.
 
 ## Key reference docs
+- `docs/RUNBOOK.md` — **how to run everything that currently works** (ingest
+  pipeline, store checks, what's still stubbed). Keep it updated every phase.
 - `docs/reviews/OPUS-REVIEW.md` — original architecture review
 - `docs/reviews/OPUS-REVIEW-VERIFICATION.md` — per-finding re-verification (current)
 - `DEV-RAG-ARCHITECTURE.md`, `IMPLEMENTATION-ORDER.md`, `docs/TODO.md`, `planning/*.md`

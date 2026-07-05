@@ -782,6 +782,11 @@ dev-rag/
 
 ## 8. Running the System
 
+> **⚠ Superseded for now — see `docs/RUNBOOK.md`.** The commands below are the
+> aspirational Docker-based workflow; as of Phase 1a the system runs directly
+> via `uv run` (see the runbook, verified 2026-07-05). Rewrite this section
+> against reality when the API phase lands.
+
 ```bash
 # Start dev-rag API
 docker compose up -d
