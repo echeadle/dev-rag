@@ -1,52 +1,43 @@
 # Current Context — dev-rag
-_Last updated: 2026-07-04_
+_Last updated: 2026-07-05_
 
 ## Active Files
-docs/plans/dev-rag-phase1a-plan.md, planning/ingest-pipeline-spec.md,
-src/dev_rag/ingest.py (-> becoming src/dev_rag/ingest/ package), pyproject.toml,
-migrations/001_initial_schema.sql, migrations/002_add_fts5.sql
+src/dev_rag/ingest/ (complete thin-slice package: extract, clean, chunk, embed,
+load, verify, pipeline), docs/reviews/FABLE-REVIEW-2026-07-05.md, docs/TODO.md
 
 ## Current Step
-OBS-007 DECIDED (2026-07-04): the spec wins.
-- planning/ingest-pipeline-spec.md supersedes src/dev_rag/ingest.py; the sliding-window
-  stub is retired. The docstring's "fixed-size chunking is fine" instinct is kept but
-  RELOCATED: it is the Stage-4 quality signal (eval question devops-008 triggers
-  structure-aware chunking), NOT a reason to skip the pipeline.
-- Phase 1a is scoped to a THIN VERTICAL SLICE (not all 8 spec stages):
-  extract -> clean(basic) -> chunk(simple) -> embed -> load -> verify.
-  Stage 3 (LLM structure) and Stage 5 (LLM enrich) deferred to Phase 1b.
-- Full plan + Claude Code kickoff: docs/plans/dev-rag-phase1a-plan.md (committed to main).
-
-(Prior: OPUS review CLOSED — review/opus-fixes merged to main; 11/12 findings already
-fixed + a hardening pass.)
-
-## Decisions Log (Phase 1a)
-- Embedding: sentence-transformers, SentenceTransformer("BAAI/bge-m3"), DENSE ONLY
-  (sparse channel is FTS5/BM25 per hybrid-search-spec.md -> no FlagEmbedding). dim 1024.
-- torch: CPU build (System76 Darter Pro, no GPU) — pinned to a pytorch-cpu index in
-  pyproject.toml ([[tool.uv.index]] + [tool.uv.sources]).
-- Load DEFINES the storage contract (retrieve.py is an empty stub): Chroma collection
-  "{domain}_content"; SQLite data/dev_rag.db per migrations 001+002. The 002 trigger
-  auto-populates chunks_fts on insert -> hybrid-ready with NO re-ingest in Phase 2.
-- Verify is STORE-LEVEL (direct Chroma/SQLite), NOT via /search or /health
-  (those are Phase 2 / OBS-009).
+PHASE 1a COMPLETE on feat/phase1a-ingest (11 commits, not pushed). All 8 plan
+tasks done; suite 70 passed. Docker Deep Dive is LIVE and retrievable:
+- 311 chunks (1500/200 window) in ChromaDB devops_content + SQLite + FTS5,
+  parity 311/311/311, idempotent re-load verified (0 inserted, 311 skipped)
+- store-level verify passes: the founding query ("production-safe way to store
+  secrets in Docker?") returns the book's secrets section (p269) as top hits
+- MID-PHASE UPGRADE: extraction switched to pymupdf4llm (markdown output —
+  real tables, ## headings on 208/311 chunks). Headings make Phase 1b
+  structure detection near-free (regex, not LLM).
+- Fable review done: docs/reviews/FABLE-REVIEW-2026-07-05.md; FBL-001..004
+  tracked in docs/TODO.md (FTS UPDATE trigger @P2, scorer mismatch @P4b,
+  doc drift @1a-close, enrich cost estimate before 1b)
 
 ## Next Action
-Run Phase 1a per docs/plans/dev-rag-phase1a-plan.md on a NEW branch feat/phase1a-ingest.
-Gated, stage-by-stage: one commit per stage, stop-and-inspect after each. Do not push.
+1. FBL-003 doc-drift cleanup commit (dup ADR-010, CLAUDE.md test count now 70,
+   IMPLEMENTATION-ORDER 1a/1b relabel, plan's chunks-column list vs 001)
+2. Ed: review branch, run it, merge feat/phase1a-ingest -> main, push
+3. Then Phase 1b decision: FBL-004 enrichment cost estimate from 311 real
+   chunks BEFORE green-lighting Stage 3/5 (LLM structure + enrich)
 
 ## Done When
-- [ ] Docker Deep Dive (data/books/) ingested via the thin-slice pipeline
-- [ ] chunks in ChromaDB (devops_content) + SQLite (data/dev_rag.db), count parity holds
-- [ ] store-level verify passes: a direct ChromaDB query returns Docker Deep Dive chunks
-- [ ] all stages committed on feat/phase1a-ingest; existing suite still green + new stage tests
+- [x] Docker Deep Dive ingested via thin-slice pipeline
+- [x] chunks in ChromaDB (devops_content) + SQLite, count parity holds
+- [x] store-level verify passes (direct ChromaDB query returns DDD chunks)
+- [x] all stages committed on feat/phase1a-ingest; suite green (70 passed)
 
 ## Blockers
-None. Deferred / out of scope until later: OBS-003 expected_source & OBS-006 FTS5 tokenizer
-(need an ingested corpus), OBS-009 real parity counts, headroom (removed; headroom-ai
-deferred), GraphRAG (no spec), agent.py (unwired).
+None. Deferred: OBS-003/OBS-006 (need corpus — now exists, revisit @P2/P4b),
+OBS-009 real parity counts, headroom-ai, GraphRAG (no spec), agent.py,
+multi-extractor LLM selection (decided against 2026-07-05, see TODO Deferred).
 
 ## Phase
-Entering Phase 1a (thin-slice ingest). Phase 0 (review/hardening) closed.
-Note: IMPLEMENTATION-ORDER.md still lists 1a as "extract,clean,structure,chunk,enrich" —
-this vertical slice defers structure+enrich to 1b; relabel when convenient.
+Phase 1a (thin-slice ingest) COMPLETE, pending merge. Next: Phase 1b
+(structure via markdown headings + enrich w/ cost gate) or Phase 2 (hybrid
+search — FTS5 index is already populated, no re-ingest needed).
