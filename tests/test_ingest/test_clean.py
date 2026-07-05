@@ -4,13 +4,13 @@ import json
 from dev_rag.ingest.clean import clean_document, load_raw, save_cleaned
 
 CONTENT = (
-    "Docker networking\n"
+    "## **Docker networking**\n"
     "Docker bridge networks connect containers on the same host. "
     "Each container gets an IP on the bridge, and the docker0 interface "
     "routes traffic between them. Overlay networks extend this across "
     "hosts using VXLAN encapsulation, which is what Swarm mode uses.\n"
     "42\n"
-    "Chapter 11: Networking"
+    "More prose after the printed page number line."
 )
 
 
@@ -33,6 +33,18 @@ def test_too_short_page_removed():
 def test_toc_page_removed():
     toc = "\n".join(
         f"Chapter {i}: Some Topic Here . . . . . . . . . . . . . . {i * 10}"
+        for i in range(1, 12)
+    )
+    result = clean_document([page(1, toc)])
+    assert result[0].was_removed
+    assert result[0].removal_reason == "table_of_contents"
+
+
+def test_markdown_toc_page_removed():
+    # pymupdf4llm renders TOC pages as markdown tables — lines end with
+    # "|" or "**N**|" rather than a bare page number
+    toc = "## **Contents**\n\n" + "\n".join(
+        f"|Chapter {i}: Topic . . . . . . . . . . . . . .|. . . . **{i * 10}**|"
         for i in range(1, 12)
     )
     result = clean_document([page(1, toc)])
@@ -70,9 +82,9 @@ def test_content_page_kept_and_cleaned():
     assert "bridge networks connect" in p.text
     # standalone page number line removed
     assert "\n42\n" not in p.text + "\n"
-    # short first line (running header) and last line (footer) removed
-    assert "Docker networking\n" not in p.text
-    assert "Chapter 11: Networking" not in p.text
+    # markdown headings are content now — must survive cleaning
+    assert "## **Docker networking**" in p.text
+    assert "More prose after" in p.text
 
 
 def test_hyphenation_rejoined():

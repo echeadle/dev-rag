@@ -47,9 +47,10 @@ def clean_document(pages: list[dict]) -> list[CleanedPage]:
             ))
             continue
 
-        # Clean within-page noise
+        # Clean within-page noise. No running-header removal: pymupdf4llm's
+        # layout analysis already strips headers/footers, and a shortest-line
+        # heuristic here would eat short markdown headings instead.
         text = _remove_page_numbers(text)
-        text = _remove_running_headers(text)
         text = _remove_excessive_whitespace(text)
         text = _fix_hyphenation(text)   # re-join words split across lines
 
@@ -75,9 +76,11 @@ def _classify_noise(text: str, page_num: int) -> str:
     if len(stripped) < 100:
         return "too_short"
 
-    # Table of contents — lots of dots and page numbers
+    # Table of contents — lots of dot leaders ending in page numbers.
+    # Trailing [\s|*] allows markdown table/bold syntax after the number
+    # ("...<br>**35**|" from pymupdf4llm), not just bare "... 35".
     dot_density = stripped.count(".") / max(len(stripped), 1)
-    if dot_density > 0.15 and re.search(r'\d{1,3}\s*$', stripped, re.MULTILINE):
+    if dot_density > 0.15 and re.search(r'\d{1,3}[\s|*]*$', stripped, re.MULTILINE):
         return "table_of_contents"
 
     # Index page — alphabetical entries with page numbers
@@ -104,27 +107,6 @@ def _classify_noise(text: str, page_num: int) -> str:
 def _remove_page_numbers(text: str) -> str:
     """Remove standalone page numbers (digits on their own line)."""
     return re.sub(r'^\s*\d{1,4}\s*$', '', text, flags=re.MULTILINE)
-
-
-def _remove_running_headers(text: str) -> str:
-    """
-    Remove running headers and footers.
-    These typically appear as short lines at the very top or bottom
-    of a page that repeat across multiple pages.
-
-    Note: this is heuristic — inspect output to verify it's not
-    removing legitimate content.
-    """
-    lines = text.split('\n')
-    if len(lines) < 4:
-        return text
-    # Remove first line if very short (likely header)
-    if len(lines[0].strip()) < 60 and lines[0].strip():
-        lines = lines[1:]
-    # Remove last line if very short (likely footer/page number)
-    if len(lines[-1].strip()) < 60 and lines[-1].strip():
-        lines = lines[:-1]
-    return '\n'.join(lines)
 
 
 def _remove_excessive_whitespace(text: str) -> str:
