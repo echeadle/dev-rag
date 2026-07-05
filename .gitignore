@@ -230,3 +230,4 @@ data/books/
 # NOTE: keep data/evaluation/*.yaml tracked — those are source, not generated
 Archive/*
 resume.sh
+current_context.md
