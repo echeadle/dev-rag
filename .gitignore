@@ -236,3 +236,4 @@ data/cleaned
 data/structured
 data/chunks 
 data/enriched/ 
+data/embeddings
