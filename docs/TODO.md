@@ -35,6 +35,20 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
 - [ ] **OBS-003** — replace placeholder `expected_source` (`docker-deep-dive.pdf`)
   with real ingested filenames (folds into Phase 4b).
 
+### Review follow-ups (from Fable review 2026-07-05, `docs/reviews/FABLE-REVIEW-2026-07-05.md`)
+- [ ] **FBL-001** — `chunks_fts` has no UPDATE trigger: ADR-006 Strategy B upserts
+  chunk content and marks removals `status='deleted'` via UPDATE, so BM25 would serve
+  stale/deleted content. Add UPDATE trigger (new `003` migration) at Phase 2 start.
+- [ ] **FBL-002** — `eval/scorer.py` matches `expected_source` inconsistently:
+  Retrieval@k uses exact list membership, MRR uses substring. Pick one (exact match
+  on ingested filename) when populating `expected_source` in Phase 4b.
+- [ ] **FBL-003** — doc drift cleanup (one `docs:` commit at end of Phase 1a):
+  duplicated ADR-010 text block in DEV-RAG-ARCHITECTURE.md; stale "expect 29" test
+  count in CLAUDE.md; IMPLEMENTATION-ORDER.md Phase 1a/1b relabel (structure+enrich
+  deferred to 1b).
+- [ ] **FBL-004** — estimate Stage 5 enrichment API cost from Phase 1a's real chunk
+  count before green-lighting Phase 1b (per-chunk Claude calls × corpus size).
+
 ---
 
 ## Active — dev-rag Corpus Building
