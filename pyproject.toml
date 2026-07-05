@@ -17,6 +17,7 @@ dependencies = [
     "networkx>=3.0",
     "PyYAML>=6.0",
     "asyncpg>=0.29.0",
+    "torch>=2.12.1",
 ]
 
 [project.optional-dependencies]
@@ -38,3 +39,11 @@ pythonpath = ["mcp"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/dev_rag"]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
