@@ -319,12 +319,6 @@ proper `src/dev_rag/ingest/` package.
 
 ---
 
-**Decision:** uv exclusively. Never pip.
-
-**Why:** uv is 10–100x faster than pip for dependency resolution and installation, has a compatible `pyproject.toml` interface, and produces reproducible lockfiles. This is a project-wide convention applied to all Python projects, not a dev-rag-specific decision.
-
----
-
 ### ADR-010: uv for all package management
 
 **Decision:** uv exclusively. Never pip.

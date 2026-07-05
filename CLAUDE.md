@@ -24,14 +24,17 @@ FTS5, BGE-M3 embeddings, bge-reranker-v2-m3, NetworkX, Docker Compose, MCP serve
   uv sync                  # resolves cleanly
   ```
 
-## Tests — the full suite is 29
+## Tests — the full suite is 70 (as of Phase 1a close, 2026-07-05)
 ```
-uv run pytest              # expect 29 passed (7 in tests/ + 22 in mcp/tests/)
+uv run pytest              # expect 70 passed (48 in tests/ + 22 in mcp/tests/)
 ```
 The 22 `mcp/tests/` include the fixtures/consumer-alignment tests guarding the two
-High review findings (OBS-001/002). **If a bare run reports only 7**, `testpaths`
-in `pyproject.toml` has regressed to `["tests"]` and is skipping `mcp/tests` —
-restore `mcp/tests` to `testpaths` (or run `uv run pytest tests mcp/tests`).
+High review findings (OBS-001/002). **If a bare run reports only the `tests/`
+count**, `testpaths` in `pyproject.toml` has regressed to `["tests"]` and is
+skipping `mcp/tests` — restore `mcp/tests` to `testpaths` (or run
+`uv run pytest tests mcp/tests`). The `tests/` count grows as pipeline stages
+are implemented; the invariant to watch is that BOTH directories are collected.
+Ingest tests never load real BGE-M3 — the model is always mocked.
 
 ## Hard rules
 - **Do not revert the canonical `relevance_score` field.** OBS-001 was fixed the
@@ -43,9 +46,15 @@ restore `mcp/tests` to `testpaths` (or run `uv run pytest tests mcp/tests`).
 - **Session close:** update `current_context.md` before ending a session (a Stop
   hook checks this).
 
-## Current state — mostly stubs (important context)
-The review is absorbed at the **contract** level, but the runtime is largely
-unimplemented. These are stubs, not working code:
+## Current state — ingest real, retrieval still stubs (important context)
+**Implemented and proven (Phase 1a, 2026-07-05):** `src/dev_rag/ingest/` — the
+thin-slice pipeline (extract via pymupdf4llm → clean → chunk 1500/200 → embed
+BGE-M3 dense → load → verify), run as `python -m dev_rag.ingest.pipeline`.
+Docker Deep Dive is ingested: 311 chunks in ChromaDB `devops_content` + SQLite +
+FTS5 with count parity. Stage 3 (LLM structure) and Stage 5 (LLM enrich) are
+deferred to Phase 1b.
+
+These are still stubs, not working code:
 - `src/dev_rag/api.py` `/search` → returns `{"results": []}` (contract only)
 - `src/dev_rag/retrieve*.py`, `reranker.py`, `graph.py`, `agent.py` (`agent.py` is
   unwired — nothing imports it), `mcp/compress.py` (no-op)

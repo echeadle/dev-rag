@@ -23,8 +23,9 @@ tasks done; suite 70 passed. Docker Deep Dive is LIVE and retrievable:
 1. FBL-003 doc-drift cleanup commit (dup ADR-010, CLAUDE.md test count now 70,
    IMPLEMENTATION-ORDER 1a/1b relabel, plan's chunks-column list vs 001)
 2. Ed: review branch, run it, merge feat/phase1a-ingest -> main, push
-3. Then Phase 1b decision: FBL-004 enrichment cost estimate from 311 real
-   chunks BEFORE green-lighting Stage 3/5 (LLM structure + enrich)
+3. Then decide next phase. NOTE naming fix (FBL-003): "structure+enrich" is
+   its own deferred section in IMPLEMENTATION-ORDER.md, NOT "Phase 1b" (1b =
+   MCP wiring there). FBL-004 cost estimate required before starting it.
 
 ## Done When
 - [x] Docker Deep Dive ingested via thin-slice pipeline
@@ -38,6 +39,7 @@ OBS-009 real parity counts, headroom-ai, GraphRAG (no spec), agent.py,
 multi-extractor LLM selection (decided against 2026-07-05, see TODO Deferred).
 
 ## Phase
-Phase 1a (thin-slice ingest) COMPLETE, pending merge. Next: Phase 1b
-(structure via markdown headings + enrich w/ cost gate) or Phase 2 (hybrid
-search — FTS5 index is already populated, no re-ingest needed).
+Phase 1a (thin-slice ingest) COMPLETE, pending merge. Next options: deferred
+structure+enrich (markdown headings make structure near-free; FBL-004 cost
+gate first) or Phase 2 (hybrid search — FTS5 already populated, no re-ingest)
+or Phase 1b (MCP wiring per IMPLEMENTATION-ORDER).

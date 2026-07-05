@@ -39,8 +39,11 @@ Then `uv add torch sentence-transformers pymupdf`. Verify:
 
 ## Storage contract — Load DEFINES it (retrieve.py is an empty stub; nothing to match)
 - Chroma `./chroma_db`; collection **`{domain}_content`** (e.g. `devops_content`).
-- SQLite **`data/dev_rag.db`**; `chunks` columns (per specs):
-  `chunk_id, source_id, domain, source, page_number, content, content_hash, version, status, ingest_timestamp`.
+- SQLite **`data/dev_rag.db`**; `chunks` columns **per migrations/001** (authoritative):
+  `chunk_id, source_id, domain, content, page_number, content_hash, ingest_timestamp, status`.
+  *(Correction 2026-07-05: this list previously included `source`/`version`, copied
+  from the hybrid-search spec's sketch — those columns live on the `sources` table
+  in 001, not on `chunks`. The chunk's source filename travels in Chroma metadata.)*
 - Chroma per-chunk metadata >= `source, domain, page_number, chunk_id`.
 - **Apply migrations 001 + 002** at Load; 002's trigger auto-populates `chunks_fts` on insert ->
   hybrid-ready, NO re-ingest in Phase 2. (Requires `chunks.content` — verify in 001; the FTS

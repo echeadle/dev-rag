@@ -14,7 +14,11 @@
 
 Work through `IMPLEMENTATION-ORDER.md` in sequence:
 
-- [ ] **Phase 1a** — Staged ingest pipeline (extract, clean, structure, chunk, enrich)
+- [x] **Phase 1a** — Thin-slice ingest pipeline ✅ 2026-07-05 (extract via
+  pymupdf4llm, clean, chunk 1500/200, embed BGE-M3, load, verify; Docker Deep
+  Dive live at parity 311/311/311). Structure+enrich (spec stages 3+5) were
+  deferred OUT of 1a — tracked in IMPLEMENTATION-ORDER.md under "Ingest
+  Structure + Enrich (DEFERRED)", gated on FBL-004; NOT the same as Phase 1b below
 - [ ] **Phase 1b** — Wire up MCP server, ingest Docker Deep Dive, first query
 - [ ] **Phase 2** — Hybrid search (BM25 + dense + RRF)
 - [ ] **Phase 3** — Cross-encoder reranker (bge-reranker-v2-m3)
@@ -42,10 +46,11 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
 - [ ] **FBL-002** — `eval/scorer.py` matches `expected_source` inconsistently:
   Retrieval@k uses exact list membership, MRR uses substring. Pick one (exact match
   on ingested filename) when populating `expected_source` in Phase 4b.
-- [ ] **FBL-003** — doc drift cleanup (one `docs:` commit at end of Phase 1a):
-  duplicated ADR-010 text block in DEV-RAG-ARCHITECTURE.md; stale "expect 29" test
-  count in CLAUDE.md; IMPLEMENTATION-ORDER.md Phase 1a/1b relabel (structure+enrich
-  deferred to 1b).
+- [x] **FBL-003** — doc drift cleanup ✅ 2026-07-05: removed duplicated ADR-010
+  block; CLAUDE.md test count updated (70) + ingest marked implemented;
+  IMPLEMENTATION-ORDER.md Phase 1a marked complete with deferred structure+enrich
+  split into its own unambiguous section; phase1a plan's chunks-column list
+  corrected to match migrations/001.
 - [ ] **FBL-004** — estimate Stage 5 enrichment API cost from Phase 1a's real chunk
   count before green-lighting Phase 1b (per-chunk Claude calls × corpus size).
 

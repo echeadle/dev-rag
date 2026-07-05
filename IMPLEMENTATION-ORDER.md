@@ -98,30 +98,52 @@ Continue to Phase 1a (staged ingest pipeline).
 
 ---
 
-## Phase 1a — Staged Ingest Pipeline
+## Phase 1a — Thin-Slice Ingest Pipeline ✅ COMPLETE 2026-07-05
 
-*Goal: Clean, structured, enriched chunks before anything hits the embedder.*
+*Goal (as rescoped 2026-07-04, see `docs/plans/dev-rag-phase1a-plan.md`): a
+thin vertical slice — local PDF → retrievable dense chunks. LLM stages
+(3 structure, 5 enrich) deferred; see "Ingest Structure + Enrich" below.*
 *Spec: `planning/ingest-pipeline-spec.md`*
 
-- [ ] Create `src/dev_rag/ingest/` package replacing the `ingest.py` stub
-- [ ] Implement `extract.py` — PDF → raw text using PyMuPDF
-- [ ] Run Stage 1 on Docker Deep Dive, inspect `data/raw/` output
-- [ ] Implement `clean.py` — noise removal (TOC, headers, page numbers)
-- [ ] Run Stage 2, inspect `data/cleaned/` — verify right pages removed
-- [ ] Implement `structure.py` — LLM chapter/section detection
-- [ ] Run Stage 3, inspect `data/structured/` — verify section boundaries
-- [ ] Implement `chunk.py` — semantic chunking at section boundaries
-- [ ] Run Stage 4, inspect `data/chunks/` — verify chunk quality and size
-- [ ] Implement `enrich.py` — summaries, keywords, synthetic questions, code
-- [ ] Run Stage 5, inspect `data/enriched/` — verify enrichment quality
-- [ ] Add enrichment columns to SQLite schema (`migrations/003_enriched_schema.sql`)
-- [ ] Implement `load.py` — write enriched chunks to ChromaDB + SQLite
-- [ ] Implement `verify.py` — smoke test after ingest
-- [ ] Implement `pipeline.py` — orchestrator with `--start-stage`/`--stop-stage`
-- [ ] Run full pipeline on Docker Deep Dive end-to-end
-- [ ] Run full test suite: `uv run pytest tests/test_ingest/`
+- [x] Create `src/dev_rag/ingest/` package replacing the `ingest.py` stub
+- [x] Implement `extract.py` — PDF → markdown via **pymupdf4llm** (upgraded
+      mid-phase from plain PyMuPDF: real tables, `##` headings)
+- [x] Run Stage 1 on Docker Deep Dive, inspect `data/raw/` output
+- [x] Implement `clean.py` — noise removal (TOC, page numbers, blank/short pages;
+      no header heuristic — pymupdf4llm strips headers/footers itself)
+- [x] Run Stage 2, inspect `data/cleaned/` — 273 kept / 7 removed, verified
+- [x] Implement `chunk.py` — fixed 1500/200 window, word-boundary snapped
+      (semantic section chunking deferred with Stage 3)
+- [x] Run Stage 4, inspect `data/chunks/` — 311 chunks, avg 1491 chars
+- [x] Implement `embed.py` — BGE-M3 dense (dim 1024, normalized, CPU)
+- [x] Implement `load.py` — ChromaDB `devops_content` + SQLite + FTS5 triggers,
+      content_hash idempotency, count-parity assertion
+- [x] Implement `verify.py` — store-level smoke test after ingest
+- [x] Implement `pipeline.py` — orchestrator with `--start-stage`/`--stop-stage`/`--dry-run`
+- [x] Run full pipeline on Docker Deep Dive end-to-end (parity 311/311/311)
+- [x] Run full test suite: `uv run pytest` (70 passed)
 
-**Checkpoint:** Docker Deep Dive cleanly ingested with enriched metadata. ✓
+**Checkpoint:** Docker Deep Dive ingested and retrievable — the founding query
+("production-safe way to store secrets in Docker?") returns the book's secrets
+section (p269) from a direct ChromaDB query. ✓
+
+---
+
+## Ingest Structure + Enrich — DEFERRED from Phase 1a (unscheduled)
+
+*The former Phase 1a stages 3 and 5. NOT the same thing as "Phase 1b" below
+(MCP wiring) — the phase1a plan's "defer to 1b" phrasing meant this section.
+Schedule deliberately: after the eval baseline (Phase 4) can measure whether
+enrichment earns its cost, and gated on the FBL-004 cost estimate
+(311 chunks/book × per-chunk Claude calls).*
+
+- [ ] FBL-004 cost estimate first — do not start without it
+- [ ] Implement `structure.py` — chapter/section detection; try **regex over
+      pymupdf4llm's markdown `##` headings first** (may need no LLM at all)
+- [ ] Implement semantic chunking at section boundaries (spec Stage 4 proper)
+- [ ] Implement `enrich.py` — summaries, keywords, synthetic questions, code
+- [ ] Add enrichment columns to SQLite schema (`migrations/00X_enriched_schema.sql`)
+- [ ] Re-ingest, compare against the fixed-window baseline via the eval harness
 
 ---
 
