@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "dev-rag": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "/home/echeadle/Projects/coding_projects/learning/dev-rag",
+        "python",
+        "/home/echeadle/Projects/coding_projects/learning/dev-rag/mcp/mcp_server.py"
+      ],
+      "env": {
+        "DEV_RAG_BASE_URL": "http://localhost:8000"
+      }
+    }
+  }
+}
