@@ -5,6 +5,10 @@
 **Status:** Ready to implement — replaces ingest.py stub  
 **Supersedes:** The basic sliding-window chunker in `src/dev_rag/ingest.py`
 
+> **OBS-007 (2026-07-04) — ADOPTED.** Decision ratified: this spec governs ingestion.
+> Phase 1a implements a THIN VERTICAL SLICE (extract -> clean -> chunk -> embed -> load
+> -> verify); Stage 3 (structure) and Stage 5 (enrich) are deferred to Phase 1b.
+
 ---
 
 ## Why This Matters

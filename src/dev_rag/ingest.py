@@ -1,10 +1,18 @@
 """
-dev-rag ingest pipeline.
-Stub file — loads PDFs and URLs, chunks, embeds, and stores.
+dev-rag ingest — SUPERSEDED STUB.
 
-Usage:
-    uv run python -m dev_rag.ingest --source /path/to/book.pdf --domain devops
-    uv run python -m dev_rag.ingest --source https://docs.docker.com/... --domain devops
+OBS-007 decision (2026-07-04): planning/ingest-pipeline-spec.md governs ingestion.
+This single-module sliding-window stub is replaced by the staged pipeline package
+src/dev_rag/ingest/ (Phase 1a thin vertical slice: extract -> clean -> chunk -> embed
+-> load -> verify; LLM structure (Stage 3) and enrichment (Stage 5) deferred to 1b).
+
+The old chunk_text docstring argued fixed-size chunking was out of scope to improve.
+That instinct is kept but RELOCATED: it is NOT a reason to skip the pipeline — it is the
+quality signal for Stage 4. Fixed-size boundaries are the Phase-1a starting point; eval
+question devops-008 (chunk_boundary) is the trigger to make them structure-aware.
+
+This file is replaced by the ingest/ package and will be deleted as that package is
+scaffolded (its content_hash helper moves into the package). Do not build on it.
 """
 import argparse
 import hashlib
