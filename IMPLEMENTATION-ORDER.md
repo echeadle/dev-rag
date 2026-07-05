@@ -286,23 +286,24 @@ Continue to Phase 1a (staged ingest pipeline).
 
 ---
 
-## Phase 6 — Headroom Compression
+## ~~Phase 6 — Headroom Compression~~ (DEFERRED — see `docs/TODO.md` Deferred section)
 
-*Goal: Token reduction on MCP server output.*
-*Spec: `planning/headroom-integration-spec.md`*
+~~*Goal: Token reduction on MCP server output.*~~
+~~*Spec: `planning/headroom-integration-spec.md`*~~
 
-- [ ] Install Headroom: `uv add headroom`
-- [ ] Implement `mcp/compress.py`
-- [ ] Run compress tests: `uv run pytest mcp/tests/test_compress.py`
-- [ ] Add `from compress import compress_text, compression_stats` to `mcp_server.py`
-- [ ] Add `compress_text()` call in `_handle_domain_search()`
-- [ ] Add `compress_text()` call in `_handle_search_all()`
-- [ ] Add compression stats to `_handle_health()`
-- [ ] Run full MCP server tests: `uv run pytest mcp/tests/`
-- [ ] Run a query from Claude Code and check `rag_health` for compression stats
-- [ ] Confirm answer quality is preserved at default ratio (0.4)
+- ~~Install Headroom: `uv add headroom`~~
+- ~~Implement `mcp/compress.py`~~
+- ~~Run compress tests: `uv run pytest mcp/tests/test_compress.py`~~
+- ~~Add `from compress import compress_text, compression_stats` to `mcp_server.py`~~
+- ~~Add `compress_text()` call in `_handle_domain_search()`~~
+- ~~Add `compress_text()` call in `_handle_search_all()`~~
+- ~~Add compression stats to `_handle_health()`~~
+- ~~Run full MCP server tests: `uv run pytest mcp/tests/`~~
+- ~~Run a query from Claude Code and check `rag_health` for compression stats~~
+- ~~Confirm answer quality is preserved at default ratio (0.4)~~
 
-**Checkpoint:** Headroom compression active, stats visible in health output. ✓
+**Checkpoint:** deferred — no longer gates Phase 7. Revisit only after a working,
+evaluated RAG baseline; see `docs/TODO.md` Deferred section.
 
 ---
 
