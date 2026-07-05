@@ -2,44 +2,38 @@
 _Last updated: 2026-07-05_
 
 ## Active Files
-src/dev_rag/ingest/ (complete thin-slice package: extract, clean, chunk, embed,
-load, verify, pipeline), docs/reviews/FABLE-REVIEW-2026-07-05.md, docs/TODO.md
+docs/plans/dev-rag-phase2-plan.md (NEW — reviewed spec, reconciled, ready),
+planning/hybrid-search-spec.md, docs/RUNBOOK.md, docs/TODO.md
 
 ## Current Step
-PHASE 1a COMPLETE on feat/phase1a-ingest (11 commits, not pushed). All 8 plan
-tasks done; suite 70 passed. Docker Deep Dive is LIVE and retrievable:
-- 311 chunks (1500/200 window) in ChromaDB devops_content + SQLite + FTS5,
-  parity 311/311/311, idempotent re-load verified (0 inserted, 311 skipped)
-- store-level verify passes: the founding query ("production-safe way to store
-  secrets in Docker?") returns the book's secrets section (p269) as top hits
-- MID-PHASE UPGRADE: extraction switched to pymupdf4llm (markdown output —
-  real tables, ## headings on 208/311 chunks). Headings make Phase 1b
-  structure detection near-free (regex, not LLM).
-- Fable review done: docs/reviews/FABLE-REVIEW-2026-07-05.md; FBL-001..004
-  tracked in docs/TODO.md (FTS UPDATE trigger @P2, scorer mismatch @P4b,
-  doc drift @1a-close, enrich cost estimate before 1b)
+Phase 1a MERGED to main (Ed ran verify himself, then merged; 18 commits).
+Corpus live: Docker Deep Dive, 311 chunks, parity 311/311/311, verified.
+docs/RUNBOOK.md added — how to run everything; update it every phase.
+
+Phase 2 (hybrid search) PLANNED: docs/plans/dev-rag-phase2-plan.md.
+Key reconciliations vs the spec (spec predates 1a — plan OVERRIDES it):
+OBS-001 relevance_score mapping per mode; dense must embed queries itself
+(query_embeddings, collections have no bound embed fn); bm25 JOINs sources
+for filename + filters active; fixtures via real migrations.
+Folds in FBL-001 (003 migration), OBS-006 ablation, OBS-009 /health counts,
+and the e2e-test-on-real-endpoint rule. NEW: FBL-005 (eval negative-precision
+threshold breaks under RRF scale) — parked to Phase 4, in TODO.
 
 ## Next Action
-1. FBL-003 doc-drift cleanup commit (dup ADR-010, CLAUDE.md test count now 70,
-   IMPLEMENTATION-ORDER 1a/1b relabel, plan's chunks-column list vs 001)
-2. Ed: review branch, run it, merge feat/phase1a-ingest -> main, push
-3. Then decide next phase. NOTE naming fix (FBL-003): "structure+enrich" is
-   its own deferred section in IMPLEMENTATION-ORDER.md, NOT "Phase 1b" (1b =
-   MCP wiring there). FBL-004 cost estimate required before starting it.
+Start Phase 2 on branch feat/phase2-hybrid-search using the kickoff prompt at
+the bottom of docs/plans/dev-rag-phase2-plan.md. Stage 0 = migration 003
+(FBL-001 FTS UPDATE trigger). Gated: one commit per stage, stop-and-inspect.
 
-## Done When
-- [x] Docker Deep Dive ingested via thin-slice pipeline
-- [x] chunks in ChromaDB (devops_content) + SQLite, count parity holds
-- [x] store-level verify passes (direct ChromaDB query returns DDD chunks)
-- [x] all stages committed on feat/phase1a-ingest; suite green (70 passed)
+## Done When (Phase 2)
+- [ ] /search returns real results in dense|sparse|hybrid with relevance_score
+- [ ] e2e test hits real endpoint (temp stores via real migrations)
+- [ ] FBL-001 closed (003 migration), OBS-009 closed (/health real counts)
+- [ ] OBS-006 ablation run + recorded; suite green; runbook updated
 
 ## Blockers
-None. Deferred: OBS-003/OBS-006 (need corpus — now exists, revisit @P2/P4b),
-OBS-009 real parity counts, headroom-ai, GraphRAG (no spec), agent.py,
-multi-extractor LLM selection (decided against 2026-07-05, see TODO Deferred).
+None. Parked: eval baseline (Phase 4, incl FBL-002+FBL-005), structure+enrich
+(FBL-004 cost gate), second book ingest (anytime, ~15 min, better after P2),
+reranker (P3), GraphRAG (P8), headroom-ai, agent.py.
 
 ## Phase
-Phase 1a (thin-slice ingest) COMPLETE, pending merge. Next options: deferred
-structure+enrich (markdown headings make structure near-free; FBL-004 cost
-gate first) or Phase 2 (hybrid search — FTS5 already populated, no re-ingest)
-or Phase 1b (MCP wiring per IMPLEMENTATION-ORDER).
+Phase 1a COMPLETE + merged. Phase 2 (hybrid search) planned, not started.

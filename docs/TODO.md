@@ -53,6 +53,10 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
   corrected to match migrations/001.
 - [ ] **FBL-004** — estimate Stage 5 enrichment API cost from Phase 1a's real chunk
   count before green-lighting Phase 1b (per-chunk Claude calls × corpus size).
+- [ ] **FBL-005** — eval scorer's negative-precision threshold (`relevance_score
+  < 0.5`) assumes similarity-scale scores; RRF scores max ~0.033, so under hybrid
+  mode every negative "passes" and the metric is meaningless. Fix in Phase 4
+  (per-mode threshold or normalization). Found while planning Phase 2 (2026-07-05).
 
 ---
 
