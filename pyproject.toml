@@ -32,7 +32,9 @@ build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+testpaths = ["tests", "mcp/tests"]
+addopts = "--import-mode=importlib"
+pythonpath = ["mcp"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/dev_rag"]
