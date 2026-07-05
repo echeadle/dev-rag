@@ -54,7 +54,7 @@ cover/
 # Translations
 *.mo
 *.pot
-
+::
 # Django stuff:
 *.log
 local_settings.py
@@ -225,7 +225,8 @@ chroma_db/
 graph_db/
 eval/results/
 data/books/
-*.db            # SQLite FTS5 store — confirm actual filename
+# SQLite FTS5 store — confirm actual filename
+*.db
 # NOTE: keep data/evaluation/*.yaml tracked — those are source, not generated
 Archive/*
 resume.sh
