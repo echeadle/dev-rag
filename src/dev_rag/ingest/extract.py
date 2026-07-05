@@ -1,18 +1,26 @@
 """
-Stage 1: Extract — convert a source document to raw text, preserving
-page boundaries.
+Stage 1: Extract — convert a source document to markdown text,
+preserving page boundaries.
+
+Uses pymupdf4llm (PyMuPDF + layout analysis) rather than plain
+page.get_text(): borderless tables come out as markdown tables instead
+of shredded column fragments, and section headings come out as markdown
+headings — which later stages can use for structure detection without
+LLM calls.
 
 Page boundaries are kept so Stage 2 can use page position as a noise
 signal (page numbers, headers, and footers appear at predictable
 positions on every page).
 
-Spec: planning/ingest-pipeline-spec.md (Stage 1).
+Spec: planning/ingest-pipeline-spec.md (Stage 1, extraction engine
+upgraded per docs/reviews/FABLE-REVIEW discussion 2026-07-05).
 """
 import json
 from dataclasses import dataclass
 from pathlib import Path
 
 import fitz  # PyMuPDF
+import pymupdf4llm
 
 
 @dataclass
@@ -33,26 +41,25 @@ class ExtractedDocument:
 
 def extract_pdf(path: Path) -> ExtractedDocument:
     """
-    Extract text from a PDF using PyMuPDF.
+    Extract markdown text from a PDF using pymupdf4llm.
 
     Preserves page boundaries so Stage 2 can use page number
     as a signal for noise (e.g. page numbers appear at predictable
     positions on every page).
     """
     doc = fitz.open(str(path))
-    pages = []
+    title = doc.metadata.get("title") or path.stem.replace("-", " ").replace("_", " ")
+    doc.close()
 
-    for page_num, page in enumerate(doc, start=1):
-        text = page.get_text("text")
-        has_images = len(page.get_images()) > 0
-        pages.append(ExtractedPage(
-            page_number=page_num,
-            text=text,
-            has_images=has_images,
-        ))
-
-    metadata = doc.metadata
-    title = metadata.get("title") or path.stem.replace("-", " ").replace("_", " ")
+    page_data = pymupdf4llm.to_markdown(str(path), page_chunks=True)
+    pages = [
+        ExtractedPage(
+            page_number=num,
+            text=d["text"],
+            has_images=bool(d.get("images")),
+        )
+        for num, d in enumerate(page_data, start=1)
+    ]
 
     return ExtractedDocument(
         source_path=str(path),

@@ -18,6 +18,7 @@ dependencies = [
     "PyYAML>=6.0",
     "asyncpg>=0.29.0",
     "torch>=2.12.1",
+    "pymupdf4llm>=1.28.0",
 ]
 
 [project.optional-dependencies]
