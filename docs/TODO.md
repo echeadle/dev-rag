@@ -165,6 +165,16 @@ Extend existing `ansible-personal` project with a new
 
 ## Deferred / Nice-to-have (revisit only after a working, evaluated RAG baseline)
 
+### Multiple PDF extractors / LLM extractor selection — DECIDED AGAINST 2026-07-05
+`pymupdf4llm` is the sole extraction engine (switched from plain PyMuPDF
+mid-Phase-1a: markdown output, real tables, headings for free). Do NOT build
+multiple extractor tools with LLM per-PDF selection — the corpus is ~6-10
+curated books ingested once each, and the pipeline's stage-1 inspection gate
+already judges real output quality better than any up-front prediction.
+Escape hatch if a future book extracts badly (scanned/OCR, two-column):
+add a second extraction function behind `extract_pdf()` and select it with a
+per-source config field in the ingest manifest — deterministic, not LLM-chosen.
+
 ### Context compression (Headroom) — REMOVED from active build 2026-07-04
 RAG works fine without compression; this is a token/cost optimisation, not a
 requirement. Revisit only after the core retrieve → rerank → serialise pipeline
