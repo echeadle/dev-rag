@@ -24,11 +24,11 @@ FTS5, BGE-M3 embeddings, bge-reranker-v2-m3, NetworkX, Docker Compose, MCP serve
   uv sync                  # resolves cleanly
   ```
 
-## Tests — the full suite is 106 (as of Phase 2 close, 2026-07-05)
+## Tests — the full suite is 127 (as of Phase 3 close, 2026-07-06)
 ```
-uv run pytest              # expect 106 passed (84 in tests/ + 22 in mcp/tests/)
+uv run pytest              # expect 127 passed (101 in tests/ + 26 in mcp/tests/)
 ```
-The 22 `mcp/tests/` include the fixtures/consumer-alignment tests guarding the two
+The `mcp/tests/` include the fixtures/consumer-alignment tests guarding the two
 High review findings (OBS-001/002). **If a bare run reports only the `tests/`
 count**, `testpaths` in `pyproject.toml` has regressed to `["tests"]` and is
 skipping `mcp/tests` — restore `mcp/tests` to `testpaths` (or run
@@ -58,11 +58,18 @@ Ingest tests never load real BGE-M3 — the model is always mocked.
   modes with canonical `relevance_score` (per-mode scales — see api.py
   docstring), `/health` real parity counts. E2E tests hit the real endpoint.
   OBS-006 resolved: porter ascii kept (ablation in hybrid-search-spec.md).
+- **MCP smoke (2026-07-05):** MCP server smoke-tested e2e over real stdio;
+  `.mcp.json` registers it for Claude Code sessions; `/collections` real counts.
+  Corpus: 2 books, 583 chunks (Deep Dive + Compose guide).
+- **Phase 3 (2026-07-06):** `reranker.py` real — bge-reranker-v2-m3 wired into
+  hybrid mode with OBS-002 fallback, proven live. **Disabled by default**: on
+  CPU it costs ~15 s/query @10 candidates (~112 s @50) vs ~0.15 s RRF-only.
+  `RERANKER_ENABLED=true` (no `DEV_RAG_` prefix) enables it per-run; Phase 4
+  eval decides the default. See runbook §5b.
 
 These are still stubs, not working code:
-- `reranker.py` (Phase 3), `graph.py`, `agent.py` (unwired — nothing imports
-  it), `mcp/compress.py` (no-op). MCP server calls the real API now but is
-  not yet smoke-tested end-to-end.
+- `graph.py`, `agent.py` (unwired — nothing imports it), `mcp/compress.py`
+  (no-op).
 So contract/fixture/test guarantees are **correct by construction**, not yet proven
 against a live pipeline. When implementing a stub, follow the matching `planning/`
 spec and add an **end-to-end test hitting the real endpoint** — hand-written

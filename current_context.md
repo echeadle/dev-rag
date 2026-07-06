@@ -1,35 +1,43 @@
 # Current Context — dev-rag
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
 ## Active Files
-src/dev_rag/ingest/pipeline.py, tests/test_ingest/test_pipeline.py,
-docs/RUNBOOK.md, docs/TODO.md
+src/dev_rag/{reranker,api,settings}.py, tests/test_reranker.py,
+tests/{test_api,test_api_e2e}.py, mcp/tests/test_mcp_e2e.py, docs/RUNBOOK.md
 
 ## Current Step
-Big day, all merged + pushed to origin/main (through cc29b5d):
-1. MCP smoke slice merged: e2e stdio tests, /collections endpoint, .mcp.json;
-   live-checked from a real Claude Code session. reranker_enabled default
-   flipped to False (was advertising a Phase 3 stub).
-2. Second book ingested: Compose book (Gkatziouras), 272 chunks -> devops
-   parity 583/583/583. Stage 8 verify initially failed — DEFAULT_QUERY was
-   a Deep Dive question; data was fine, re-ran stage 8 with a Compose query.
-3. Root-cause fix: --query now REQUIRED whenever stage 8 runs (fails fast at
-   CLI); --dry-run / early --stop-stage exempt. Runbook §3/§4 updated.
-   Suite now 113 (was 111; +2 CLI tests).
+PHASE 3 (reranker) COMPLETE on feat/phase3-reranker (NOT merged, NOT
+pushed — Ed reviews, merges). Suite 127 passed (was 113; +12 unit +2 e2e).
+- reranker.py real: RankedResult, rerank(), rerank_with_fallback() (OBS-002:
+  every path returns RankedResult; reranker_score=None marks fallback).
+- api.py: lifespan eager-load when enabled (OBS-010); hybrid = two-stage
+  (RRF pool -> cross-encoder -> caller's n_results; backends widened to
+  fill the pool); SearchResult grew reranker_score debug field.
+- Verified live on 583-chunk corpus: reranker re-orders candidates, Compose
+  book reaches top-3 on Compose query, sweeps bind-mount query.
+- DECISION (Ed, 2026-07-06): ships DEFAULT OFF. Measured CPU latency
+  ~1.5-2 s/pair: ~15 s/query @10 candidates, ~112 s @50, vs ~0.15 s
+  RRF-only; informal quality delta modest. RERANKER_ENABLED=true per-run
+  (NO DEV_RAG_ prefix — spec's env name wrong; runbook §5b documents).
+- Suite guards: test_api.py + mcp e2e pin reranker off; e2e reranker tests
+  inject FakeCrossEncoder. Real models never load in tests (18 s suite).
+- Docs updated: RUNBOOK §5b, TODO Phase 3, IMPLEMENTATION-ORDER, CLAUDE.md
+  (stub list, test count 127, current state).
 
 ## Next Action
-Phase 3 reranker (bge-reranker-v2-m3, planning/ spec) — the two-book overlap
-makes its value measurable now: even a Compose-specific query ranks Deep
-Dive's Compose chapter (p136) top. Alt slice: ingest Ansible for DevOps.
+1. Ed: review feat/phase3-reranker, optionally try runbook §5b A/B, merge.
+2. Then: Phase 4 eval harness (FBL-002/FBL-005 scorer fixes + OBS-003
+   expected_source) — it decides the reranker default with real numbers.
+   Alt: ingest Ansible for DevOps (remember book-specific --query).
 
-## Done When (Phase 3 — to confirm when starting)
-- [ ] reranker.py real, wired behind reranker_enabled (flip default to True)
-- [ ] e2e test against the real endpoint (per CLAUDE.md stub rule)
-- [ ] before/after comparison on cross-book queries recorded
+## Done When (Phase 3) — ALL MET
+- [x] reranker.py real, wired, OBS-002 fallback proven (unit + e2e + live)
+- [x] e2e tests hit the real endpoint (CLAUDE.md stub rule)
+- [x] Before/after recorded (TODO.md); latency measured, default decided
 
 ## Blockers
-None. Parked: eval baseline P4 (FBL-002/FBL-005 + OBS-003), structure+enrich
-(FBL-004 cost gate), GraphRAG P8, headroom-ai.
+None. Parked: smaller reranker model (bge-reranker-base) until Phase 4 eval;
+structure+enrich (FBL-004 cost gate), GraphRAG P8, headroom-ai.
 
 ## Phase
-Corpus: 2 books / 583 chunks live. Phase 3 (reranker) is next.
+Phase 3 COMPLETE, pending Ed's review + merge. Phase 4 (eval) is next.

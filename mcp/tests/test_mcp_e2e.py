@@ -76,6 +76,9 @@ def live_api(tmp_path_factory):
     mp.setattr(settings, "chroma_db_path", str(tmp_path / "chroma"))
     mp.setattr(settings, "sqlite_db_path", tmp_path / "dev_rag.db")
     mp.setattr(retrieve, "_embedder", QueryModel())
+    # uvicorn runs the real lifespan — keep it from loading the real
+    # bge-reranker-v2-m3; the stdio path is what this file exercises
+    mp.setattr(settings, "reranker_enabled", False)
 
     config = uvicorn.Config(app, host="127.0.0.1", port=0, log_level="warning")
     server = uvicorn.Server(config)

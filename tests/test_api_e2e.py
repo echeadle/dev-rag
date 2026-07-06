@@ -13,6 +13,7 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
+import dev_rag.reranker as reranker
 import dev_rag.retrieve as retrieve
 from dev_rag.api import app
 from dev_rag.ingest.load import load_to_stores
@@ -38,6 +39,14 @@ class QueryModel:
         return v
 
 
+class FakeCrossEncoder:
+    """Favours the bridge-networks chunk — deliberately inverts RRF order,
+    so a reranked top hit is distinguishable from the fused one."""
+
+    def predict(self, pairs, **kwargs):
+        return [9.0 if "Bridge" in doc else 1.0 for _, doc in pairs]
+
+
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     chunks = [
@@ -59,6 +68,10 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "chroma_db_path", str(tmp_path / "chroma"))
     monkeypatch.setattr(settings, "sqlite_db_path", tmp_path / "dev_rag.db")
     monkeypatch.setattr(retrieve, "_embedder", QueryModel())
+    # Reranker off by default: these tests pin the Phase 2 contract
+    # (relevance_score == rrf_score). Reranker-on tests enable it per-test.
+    monkeypatch.setattr(settings, "reranker_enabled", False)
+    monkeypatch.setattr(reranker, "_reranker", None)
     return TestClient(app)
 
 
@@ -104,6 +117,33 @@ def test_all_results_carry_canonical_relevance_score(client):
     for mode in ("hybrid", "dense", "sparse"):
         for r in search(client, search_mode=mode)["results"]:
             assert r["relevance_score"] is not None, f"missing in {mode}"
+
+
+def test_hybrid_reranker_end_to_end(client, monkeypatch):
+    """Phase 3: cross-encoder re-orders the fused candidates (ADR-012)."""
+    monkeypatch.setattr(settings, "reranker_enabled", True)
+    monkeypatch.setattr(reranker, "_reranker", FakeCrossEncoder())
+    data = search(client, search_mode="hybrid")
+    top = data["results"][0]
+    # RRF favours the secrets chunk; the cross-encoder favours bridge —
+    # a reranked top hit proves Stage 2 actually ran and overrode Stage 1
+    assert top["chunk_id"] == "tiny_0002"
+    assert top["reranker_score"] == pytest.approx(9.0)
+    # OBS-001: canonical field carries the reranker score when it ran
+    assert top["relevance_score"] == pytest.approx(9.0)
+    assert top["rrf_score"] is not None          # Stage 1 debug preserved
+    assert data["reranker"] == settings.reranker_model
+
+
+def test_hybrid_reranker_fallback_when_model_missing(client, monkeypatch):
+    """OBS-002: enabled but not loaded → RRF order, reranker_score=None."""
+    monkeypatch.setattr(settings, "reranker_enabled", True)
+    monkeypatch.setattr(reranker, "_reranker", None)
+    data = search(client, search_mode="hybrid")
+    top = data["results"][0]
+    assert top["chunk_id"] == "tiny_0001"        # RRF order preserved
+    assert top["reranker_score"] is None
+    assert top["relevance_score"] == pytest.approx(top["rrf_score"])
 
 
 def test_collections_report_real_chroma_counts(client):

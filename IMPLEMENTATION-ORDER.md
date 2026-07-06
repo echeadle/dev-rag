@@ -197,22 +197,27 @@ enrichment earns its cost, and gated on the FBL-004 cost estimate
 
 ---
 
-## Phase 3 — Reranker
+## Phase 3 — Reranker ✅ 2026-07-06
 
 *Goal: Cross-encoder second pass over hybrid results. Spec: `planning/reranker-spec.md`*
 
-- [ ] Add dependency: `uv add sentence-transformers`
-- [ ] Implement `src/dev_rag/reranker.py`
-- [ ] Run reranker tests (all mocked — no model download needed):
-  `uv run pytest tests/test_reranker.py`
-- [ ] Add startup model load to `api.py`
-- [ ] Start API and confirm model downloads and loads:
-  `docker compose up -d` — watch logs for "Reranker loaded"
-- [ ] Wire reranker into `/search` route — increase Stage 1 candidates to 50
-- [ ] Run full test suite: `uv run pytest`
-- [ ] Confirm `rag_health` MCP tool shows reranker model name
+- [x] Dependency already present (`sentence-transformers>=3.0.0` — no add needed)
+- [x] Implement `src/dev_rag/reranker.py`
+- [x] Run reranker tests (all mocked — no model download needed):
+  `uv run pytest tests/test_reranker.py` (12 passed; + 2 real-endpoint e2e)
+- [x] Add startup model load to `api.py` (lifespan, OBS-010 — not compose;
+  runs via `uv run uvicorn`, see runbook §5b)
+- [x] Start API and confirm model downloads and loads ("Reranker loaded" seen)
+- [x] Wire reranker into `/search` route — Stage 1 candidates raised to 50
+  (dense/sparse backends widened too, or the pool can't fill)
+- [x] Run full test suite: `uv run pytest` (127 passed)
+- [x] Verified live against the 583-chunk corpus; `/search` returns
+  reranker model + per-result `reranker_score`
 
 **Checkpoint:** Two-stage retrieval (hybrid + reranker) is live. ✓
+**Deployment note:** shipped `reranker_enabled=False` by default — measured
+~15 s/query @10 candidates (~112 s @50) on CPU vs ~0.15 s RRF-only.
+`RERANKER_ENABLED=true` per-run; Phase 4 eval decides the default.
 
 ---
 

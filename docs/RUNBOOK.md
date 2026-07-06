@@ -146,16 +146,41 @@ FastAPI's auto-generated interactive docs let you fire searches from the
 browser (expand POST /search → "Try it out").
 
 `relevance_score` is the canonical ranking field. Its scale is **per-mode**
-(hybrid: RRF ~0.01–0.033 · dense: cosine 0–1 · sparse: BM25 unbounded) —
-never compare scores across modes. `dense_rank`/`sparse_rank` in hybrid
-responses show what each channel contributed.
+(hybrid: RRF ~0.01–0.033, or cross-encoder logit when the reranker ran ·
+dense: cosine 0–1 · sparse: BM25 unbounded) — never compare scores across
+modes. `dense_rank`/`sparse_rank`/`rrf_score`/`reranker_score` in hybrid
+responses are debug fields; `reranker_score: null` means the reranker
+didn't run for that result.
+
+### 5b. Reranker (Phase 3 — implemented, OFF by default)
+
+Cross-encoder reranking (bge-reranker-v2-m3) is fully wired into hybrid
+mode but **disabled by default**: measured 2026-07-06 on CPU it costs
+~1.5–2 s per candidate pair — ~15 s/query at 10 candidates, ~112 s at the
+spec's 50 — vs ~0.15 s for RRF-only. Enable it per-run for quality A/B
+or the Phase 4 eval:
+
+```bash
+RERANKER_ENABLED=true RERANKER_CANDIDATES=10 \
+    uv run uvicorn dev_rag.api:app --host 127.0.0.1 --port 8000
+```
+
+Notes:
+- Env names have **no `DEV_RAG_` prefix** (settings.py sets no env_prefix);
+  the reranker spec's `DEV_RAG_RERANKER_ENABLED` is wrong — use
+  `RERANKER_ENABLED`. (`DEV_RAG_BASE_URL` is different: that's the MCP
+  server's own variable, not a pydantic setting.)
+- First enabled startup downloads the model (~2.2 GB, one-time, cached in
+  `~/.cache/huggingface/`) and loads it eagerly in the lifespan — the
+  server doesn't answer until "Reranker loaded" appears in the log.
+- Fallback is graceful (OBS-002): if the model is missing or scoring
+  fails, hybrid answers in RRF order with `reranker_score: null`.
+- Revisit the default when Phase 4 eval quantifies the accuracy delta.
 
 ## 6. What does NOT run yet (do not trust these surfaces)
 
 | Surface | State |
 |---|---|
-| MCP server (`mcp/mcp_server.py`) | Calls the now-real API but **not yet smoke-tested end-to-end** — wire + verify in the MCP phase. |
-| Reranker | Phase 3 — `/search` returns RRF order; `reranker_enabled` setting has no effect yet. |
 | Eval harness (`eval/run_eval.py`) | No baseline until Phase 4; scorer has known scale bugs (FBL-002, FBL-005). |
 | `docker compose up` | Compose files predate Phase 1a and are **unverified**; everything runs directly via `uv run`, no containers needed. |
 | GraphRAG / agent.py / compression | Stubs, deferred (see docs/TODO.md). |
@@ -171,7 +196,7 @@ data/books/        source PDFs (yours; gitignored)
 data/raw|cleaned|chunks|embeddings/   stage artifacts (gitignored, regenerable)
 data/dev_rag.db    SQLite: sources, chunks, chunks_fts (gitignored)
 chroma_db/         ChromaDB persistence (gitignored)
-~/.cache/huggingface/   BGE-M3 model cache (~2.3 GB, shared across projects)
+~/.cache/huggingface/   model cache: BGE-M3 (~2.3 GB) + bge-reranker-v2-m3 (~2.2 GB)
 ```
 
 Everything outside `data/books/` is regenerable from the PDFs; a full rebuild

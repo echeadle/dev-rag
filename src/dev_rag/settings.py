@@ -37,7 +37,11 @@ class Settings(BaseSettings):
     dense_candidates: int = 20
     sparse_candidates: int = 20
 
-    # Reranker (reranker.py is a stub until Phase 3 — keep disabled by default)
+    # Reranker (Phase 3 — implemented, OFF by default): bge-reranker-v2-m3
+    # costs ~1.5-2 s/pair on CPU — measured 2026-07-06: ~15 s/query at 10
+    # candidates, ~112 s at 50, vs ~0.15 s RRF-only. Enable per-run with
+    # RERANKER_ENABLED=true (+ RERANKER_CANDIDATES=10) for eval/quality A-B;
+    # revisit the default when Phase 4 eval quantifies the accuracy delta.
     reranker_enabled: bool = False
     reranker_model: str = "BAAI/bge-reranker-v2-m3"
     reranker_top_n: int = 10
