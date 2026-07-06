@@ -1,13 +1,15 @@
 """Tests for FastAPI routes.
 
-Autouse fixture points settings at EMPTY temp stores and injects a fake
-embedder — /search must never load real BGE-M3 or touch the real corpus.
-Full-pipeline assertions live in test_api_e2e.py (loaded temp stores).
+Autouse fixture points settings at EMPTY temp stores, injects a fake
+embedder, and disables the reranker — /search must never load real
+BGE-M3 or bge-reranker-v2-m3, or touch the real corpus. Full-pipeline
+assertions live in test_api_e2e.py (loaded temp stores).
 """
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
+import dev_rag.reranker as reranker
 import dev_rag.retrieve as retrieve
 from dev_rag.api import app
 from dev_rag.settings import settings
@@ -25,6 +27,8 @@ def isolated_stores(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "chroma_db_path", str(tmp_path / "chroma"))
     monkeypatch.setattr(settings, "sqlite_db_path", tmp_path / "dev_rag.db")
     monkeypatch.setattr(retrieve, "_embedder", FakeEmbedder())
+    monkeypatch.setattr(settings, "reranker_enabled", False)
+    monkeypatch.setattr(reranker, "_reranker", None)
 
 
 def test_health():

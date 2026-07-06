@@ -25,7 +25,16 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
 - [x] **Phase 2** — Hybrid search (BM25 + dense + RRF) ✅ 2026-07-05 (pending
   merge). /search live in 3 modes w/ canonical relevance_score; OBS-006 ablation:
   hybrid ≥ dense everywhere, porter ascii kept; e2e tests on the real endpoint.
-- [ ] **Phase 3** — Cross-encoder reranker (bge-reranker-v2-m3)
+- [x] **Phase 3** — Cross-encoder reranker (bge-reranker-v2-m3) ✅ 2026-07-06:
+  implemented + wired into hybrid (50-candidate pool → top-N), OBS-002
+  fallback proven, 14 new tests (12 unit + 2 real-endpoint e2e), verified
+  live against the 583-chunk corpus. **Shipped default OFF** (Ed's call):
+  measured ~1.5-2 s/pair on CPU → ~15 s/query @10 candidates, ~112 s @50,
+  vs ~0.15 s RRF-only, while the informal 2-query quality delta was modest
+  (second book already fixed the gap query at RRF level). Enable per-run:
+  `RERANKER_ENABLED=true RERANKER_CANDIDATES=10` (no DEV_RAG_ prefix — the
+  spec's env name is wrong). Phase 4 eval decides the default with real
+  numbers; smaller-model option (bge-reranker-base) parked until then.
 - [ ] **Phase 4** — Evaluation harness running, first baseline established
 - [ ] **Phase 4b** — Grow eval question set to 25 with expected_source populated
 - [ ] **Phase 5** — Python domain

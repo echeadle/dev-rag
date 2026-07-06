@@ -4,15 +4,19 @@ dev-rag FastAPI application — hybrid retrieval (Phase 2).
 /search runs dense | sparse | hybrid retrieval and always emits the
 canonical `relevance_score` (OBS-001 hard rule). Score semantics are
 PER-MODE and not comparable across modes:
-  hybrid → RRF score          (~0.01-0.033)
+  hybrid → cross-encoder logit (unbounded, roughly -10..+10) when the
+           reranker ran; RRF score (~0.01-0.033) on fallback — check the
+           per-result `reranker_score` debug field to tell which
   dense  → cosine similarity  (0-1)
   sparse → negated BM25       (unbounded positive)
-`rrf_score`/`dense_rank`/`sparse_rank` remain as optional debug fields.
+`rrf_score`/`reranker_score`/`dense_rank`/`sparse_rank` are debug fields.
 
-The BGE-M3 query embedder loads lazily on the FIRST search (~10 s CPU),
-not at startup — keeps uvicorn boot and the test suite fast (tests
-inject a fake via dev_rag.retrieve). Reranking is Phase 3; until then
-relevance_score = the mode's own score (documented OBS-001 fallback).
+The BGE-M3 query embedder loads lazily on the FIRST search (~10 s CPU);
+the reranker loads EAGERLY at startup via lifespan when enabled
+(ADR-012). Tests inject fakes via dev_rag.retrieve._embedder and
+dev_rag.reranker._reranker — the suite never loads real models.
+Hybrid is two-stage (Phase 3): top-`reranker_candidates` from RRF, then
+bge-reranker-v2-m3 re-scores and returns the caller's n_results.
 
 Fixes applied:
   OBS-001: /search always emits `relevance_score` — never rrf_score/reranker_score/score
@@ -28,6 +32,8 @@ from enum import Enum
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
+from . import reranker
+from .reranker import rerank_with_fallback
 from .retrieve import dense_search
 from .retrieve_hybrid import hybrid_search
 from .retrieve_sparse import bm25_search
@@ -42,8 +48,10 @@ log = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup/shutdown. Embedder is lazy (see module docstring)."""
-    # TODO Phase 3: load bge-reranker-v2-m3 here (see planning/reranker-spec.md)
+    """Startup/shutdown. Embedder is lazy (see module docstring); the
+    reranker loads eagerly here (ADR-012: once per process, ~seconds)."""
+    if settings.reranker_enabled:
+        reranker.get_reranker()
     log.info("dev-rag startup complete")
     yield
     log.info("dev-rag shutdown")
@@ -83,6 +91,7 @@ class SearchResult(BaseModel):
     content: str
     relevance_score: float          # OBS-001: single canonical field for all callers
     rrf_score: float | None = None  # preserved for debugging — not for consumers
+    reranker_score: float | None = None  # debug; None = reranker didn't run
     dense_rank: int | None = None
     sparse_rank: int | None = None
 
@@ -163,25 +172,47 @@ async def search(request: SearchRequest) -> dict:
     """
     Retrieval in the requested mode. Always returns canonical
     `relevance_score` (OBS-001); value semantics are per-mode — see the
-    module docstring. Reranking arrives in Phase 3 (until then this is
-    the documented relevance_score = mode-score fallback; OBS-002's
-    RankedResult wrapping applies when the reranker stage lands).
+    module docstring. Hybrid mode is two-stage: RRF candidates, then the
+    cross-encoder (with OBS-002 RankedResult fallback to RRF order).
+    Dense/sparse are single-stage diagnostic modes and never rerank.
     """
     if request.search_mode == SearchMode.hybrid:
+        # Stage 1: with the reranker on, fetch a wide pool (ADR-012's 50→N);
+        # the backends must also widen or fusion can never fill the pool.
+        if settings.reranker_enabled:
+            pool = settings.reranker_candidates
+            candidates = hybrid_search(
+                request.query, request.domain, n_results=pool,
+                dense_candidates=pool, sparse_candidates=pool,
+            )
+        else:
+            candidates = hybrid_search(
+                request.query, request.domain, n_results=request.n_results,
+            )
+        # Stage 2: cross-encoder re-score. Falls back to RRF order (OBS-002)
+        # when the reranker is disabled, not loaded, or raises.
+        ranked = rerank_with_fallback(
+            request.query,
+            candidates,
+            reranker._reranker if settings.reranker_enabled else None,
+            top_n=request.n_results,
+        )
         results = [
             SearchResult(
                 chunk_id=r.chunk_id,
                 source=r.source,
                 domain=r.domain,
                 content=r.content,
-                relevance_score=r.rrf_score,
+                # OBS-001: canonical field — reranker score when it ran,
+                # RRF score on any fallback path
+                relevance_score=r.reranker_score
+                if r.reranker_score is not None else r.rrf_score,
                 rrf_score=r.rrf_score,
+                reranker_score=r.reranker_score,
                 dense_rank=r.dense_rank,
                 sparse_rank=r.sparse_rank,
             )
-            for r in hybrid_search(
-                request.query, request.domain, n_results=request.n_results,
-            )
+            for r in ranked
         ]
     elif request.search_mode == SearchMode.dense:
         results = [
