@@ -295,9 +295,10 @@ R@1/R@3/MRR/chunk_match with top-1 `ansible-for-real-life-automation.pdf`. The
 ## Steps
 
 1. `git checkout feat/eval-rla-positive`
-2. `git diff main --stat` — expect 5 tracked files + 1 new baseline
-   (`_hybrid_rrf_4books_37q.json`); the only code change is one line in
-   `tests/test_eval.py`.
+2. `git diff main --stat` — expect **7 files**: 6 modified (this checklist
+   file included) + 1 new baseline (`_hybrid_rrf_4books_37q.json`). The only
+   *code* change is one line in `tests/test_eval.py`; the rest are the new
+   eval question and doc updates.
 3. `git diff main -- data/evaluation/devops_questions.yaml` — read the
    devops-034 block and its verification note (exclusivity + live pre-check).
 4. Confirm the exclusivity claim yourself:
