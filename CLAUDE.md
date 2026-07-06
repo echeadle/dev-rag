@@ -24,9 +24,9 @@ FTS5, BGE-M3 embeddings, bge-reranker-v2-m3, NetworkX, Docker Compose, MCP serve
   uv sync                  # resolves cleanly
   ```
 
-## Tests — the full suite is 127 (as of Phase 3 close, 2026-07-06)
+## Tests — the full suite is 139 (as of Phase 4 close, 2026-07-06)
 ```
-uv run pytest              # expect 127 passed (101 in tests/ + 26 in mcp/tests/)
+uv run pytest              # expect 139 passed (113 in tests/ + 26 in mcp/tests/)
 ```
 The `mcp/tests/` include the fixtures/consumer-alignment tests guarding the two
 High review findings (OBS-001/002). **If a bare run reports only the `tests/`
@@ -64,8 +64,17 @@ Ingest tests never load real BGE-M3 — the model is always mocked.
 - **Phase 3 (2026-07-06):** `reranker.py` real — bge-reranker-v2-m3 wired into
   hybrid mode with OBS-002 fallback, proven live. **Disabled by default**: on
   CPU it costs ~15 s/query @10 candidates (~112 s @50) vs ~0.15 s RRF-only.
-  `RERANKER_ENABLED=true` (no `DEV_RAG_` prefix) enables it per-run; Phase 4
-  eval decides the default. See runbook §5b.
+  `RERANKER_ENABLED=true` (no `DEV_RAG_` prefix) enables it per-run. See
+  runbook §5b.
+- **Phase 4 + 4b (2026-07-06):** eval harness real end-to-end (loader/
+  reporter/run_eval implemented; FBL-002/FBL-005 scorer fixes; OBS-003
+  resolved — 36 devops questions, 25 with expected_source VERIFIED against
+  chunk text). Official baseline `eval/baselines/2026-07-06_hybrid_rrf.json`:
+  R@1 92 / R@3 100 / MRR 95.3 / composite 94.1. Reranker A/B: R@3 delta 0 →
+  default stays OFF (ADR-012 measured table). Open finding FBL-006: reranker
+  logits don't reject near-domain negatives (negative precision 0%).
+  **When adding eval questions, verify expected_source against
+  data/chunks/*.json — never guess from titles.** Runbook §5c.
 
 These are still stubs, not working code:
 - `graph.py`, `agent.py` (unwired — nothing imports it), `mcp/compress.py`

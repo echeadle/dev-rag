@@ -457,10 +457,32 @@ an `AttributeError` when reading `.reranker_score` (OBS-002 fix).
 (`reranker.py`), one modified (`api.py` — startup model load and two-stage
 search route).
 
-**Measured delta:** *(To be filled in after running the eval harness at home.
-Expected: Retrieval@3 +5 to +15 points, MRR +5 to +10 points over hybrid-only
-baseline. If delta is less than +3 points on Retrieval@3, the corpus may be
-too small for the reranker to show meaningful improvement yet.)*
+**Measured delta (2026-07-06, Phase 4 baseline — 36 devops questions, 25 with
+verified expected_source; corpus = 2 books / 583 chunks; reranker
+bge-reranker-v2-m3 @ 10 candidates on CPU):**
+
+| Metric | hybrid RRF | + reranker | delta |
+|---|---|---|---|
+| Retrieval@1 | 92.0% | 96.0% | **+4.0** |
+| Retrieval@3 | 100% | 100% | **0.0** |
+| MRR | 95.3% | 98.0% | +2.7 |
+| Chunk match | 84.6% | 88.5% | +3.9 |
+| Negative precision | n/a (FBL-005: RRF has no relevance scale) | **0.0%** | — |
+| Latency/query (warm) | ~0.15 s | ~15 s | ~100× |
+
+Baselines: `eval/baselines/2026-07-06_hybrid_rrf.json` / `_reranker_c10.json`.
+
+**Decision:** the ADR's own criterion triggered — R@3 delta is below +3 points
+(hybrid RRF is already at the R@3 ceiling on this two-book corpus), so
+`reranker_enabled` stays **False** by default. The reranker remains fully
+implemented for per-run use (`RERANKER_ENABLED=true`) and the question
+re-opens when the corpus grows enough for R@3 headroom to exist.
+
+**New finding (FBL-006):** the hoped-for negative gating (logit < 0 rejects
+out-of-corpus queries) does NOT hold — all 3 negatives (Podman/Nomad/GitLab)
+got confidently positive logits on near-miss content; negative precision 0%.
+Composite scores are NOT comparable across the two runs (negatives only
+computable in the reranker run). Tracked in docs/TODO.md.
 
 ---
 

@@ -177,11 +177,38 @@ Notes:
   fails, hybrid answers in RRF order with `reranker_score: null`.
 - Revisit the default when Phase 4 eval quantifies the accuracy delta.
 
+## 5c. Run the evaluation harness (Phase 4)
+
+The server must be running first (§5). Then:
+
+```bash
+uv run python eval/run_eval.py --domain devops            # run + save results
+uv run python eval/run_eval.py --domain devops \
+    --compare eval/baselines/2026-07-06_hybrid_rrf.json   # + delta vs baseline
+uv run python eval/run_eval.py --category negative --no-save
+```
+
+- Question sets live in `data/evaluation/*_questions.yaml`; every non-null
+  `expected_source` is a real ingested filename verified against chunk text
+  (OBS-003). When adding questions, verify the book actually contains the
+  answer (grep `data/chunks/*.json`) — mislabeled ground truth poisons
+  every future comparison.
+- Each run saves `eval/results/<timestamp>.json` (gitignored scratch) with
+  a self-describing `config` block. Promote a run to an official baseline
+  by copying it into `eval/baselines/` (tracked in git).
+- The A/B workflow: run against the default server → restart the server
+  with different settings (e.g. `RERANKER_ENABLED=true RERANKER_CANDIDATES=10`)
+  → run again with `--compare <baseline>`.
+- **Negative precision reports n/a on plain hybrid runs BY DESIGN**
+  (FBL-005): RRF scores encode rank, not relevance, so "below threshold"
+  is meaningless. The metric computes when the reranker is on (logit < 0)
+  or in dense mode (cosine < 0.5).
+- `--graph` stays gated off until `/search/graph` exists (Phase 8).
+
 ## 6. What does NOT run yet (do not trust these surfaces)
 
 | Surface | State |
 |---|---|
-| Eval harness (`eval/run_eval.py`) | No baseline until Phase 4; scorer has known scale bugs (FBL-002, FBL-005). |
 | `docker compose up` | Compose files predate Phase 1a and are **unverified**; everything runs directly via `uv run`, no containers needed. |
 | GraphRAG / agent.py / compression | Stubs, deferred (see docs/TODO.md). |
 

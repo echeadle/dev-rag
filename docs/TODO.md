@@ -33,10 +33,24 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
   vs ~0.15 s RRF-only, while the informal 2-query quality delta was modest
   (second book already fixed the gap query at RRF level). Enable per-run:
   `RERANKER_ENABLED=true RERANKER_CANDIDATES=10` (no DEV_RAG_ prefix — the
-  spec's env name is wrong). Phase 4 eval decides the default with real
-  numbers; smaller-model option (bge-reranker-base) parked until then.
-- [ ] **Phase 4** — Evaluation harness running, first baseline established
-- [ ] **Phase 4b** — Grow eval question set to 25 with expected_source populated
+  spec's env name is wrong). **Phase 4 eval decided (2026-07-06): default
+  stays OFF** — R@3 delta 0 (already at ceiling), R@1 +4 at ~100× latency;
+  see ADR-012's measured table. Re-open when the corpus has R@3 headroom;
+  smaller-model option (bge-reranker-base) parked with it.
+- [x] **Phase 4** — Evaluation harness running, first baseline established
+  ✅ 2026-07-06: loader/reporter/run_eval implemented (scorer/runner already
+  real), FBL-002 + FBL-005 fixed, 12 new tests incl. full-harness e2e.
+  OFFICIAL BASELINE `eval/baselines/2026-07-06_hybrid_rrf.json`: R@1 92%,
+  R@3 100%, MRR 95.3%, composite 94.1% (25 ground-truthed questions).
+  Reranker A/B (`_reranker_c10.json`): R@1 +4, R@3 +0, MRR +2.7 at ~100×
+  latency → **default stays OFF** per ADR-012's own <+3 R@3 criterion
+  (measured table now filled in ADR-012). New finding FBL-006 below.
+- [x] **Phase 4b** — Grow eval question set to 25 with expected_source populated
+  ✅ 2026-07-06: 36 devops questions (7 new), 25 with expected_source verified
+  against chunk artifacts — never guessed from titles. Notables: devops-019
+  converted negative→positive (Compose book ch12 covers Terraform+ECS, so the
+  old negative broke); devops-027 (GitLab CI) is the replacement negative;
+  nulls are deliberate + documented per-question (multi-source or corpus gap).
 - [ ] **Phase 5** — Python domain
 - [ ] **Phase 5b** — Unified search_all ranking via reranker
   - [ ] Review `search_all` result budget (found in MCP smoke test 2026-07-05):
@@ -54,16 +68,16 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
 ### Review follow-ups (from OPUS-REVIEW-VERIFICATION, do at the mapped phase)
 - [x] **OBS-009** — ✅ 2026-07-05 (Phase 2): `/health` reports real per-domain
   counts; drift flips status to `degraded` (proven by e2e test).
-- [ ] **OBS-003** — replace placeholder `expected_source` (`docker-deep-dive.pdf`)
-  with real ingested filenames (folds into Phase 4b).
+- [x] **OBS-003** — ✅ 2026-07-06 (Phase 4b): all placeholders replaced with
+  real ingested filenames, verified against chunk text; python-004's
+  not-ingested placeholder nulled with a note.
 
 ### Review follow-ups (from Fable review 2026-07-05, `docs/reviews/FABLE-REVIEW-2026-07-05.md`)
 - [x] **FBL-001** — ✅ 2026-07-05 (Phase 2 stage 0): migration
   `003_fts_update_trigger.sql` keeps chunks_fts correct on UPDATE (content
   rewrite + status flips), tests in tests/test_migrations.py.
-- [ ] **FBL-002** — `eval/scorer.py` matches `expected_source` inconsistently:
-  Retrieval@k uses exact list membership, MRR uses substring. Pick one (exact match
-  on ingested filename) when populating `expected_source` in Phase 4b.
+- [x] **FBL-002** — ✅ 2026-07-06 (Phase 4): exact match everywhere (MRR was
+  substring); regression-tested in tests/test_eval.py.
 - [x] **FBL-003** — doc drift cleanup ✅ 2026-07-05: removed duplicated ADR-010
   block; CLAUDE.md test count updated (70) + ingest marked implemented;
   IMPLEMENTATION-ORDER.md Phase 1a marked complete with deferred structure+enrich
@@ -71,10 +85,17 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
   corrected to match migrations/001.
 - [ ] **FBL-004** — estimate Stage 5 enrichment API cost from Phase 1a's real chunk
   count before green-lighting Phase 1b (per-chunk Claude calls × corpus size).
-- [ ] **FBL-005** — eval scorer's negative-precision threshold (`relevance_score
-  < 0.5`) assumes similarity-scale scores; RRF scores max ~0.033, so under hybrid
-  mode every negative "passes" and the metric is meaningless. Fix in Phase 4
-  (per-mode threshold or normalization). Found while planning Phase 2 (2026-07-05).
+- [x] **FBL-005** — ✅ 2026-07-06 (Phase 4): negative precision is mode-aware —
+  reranker logit < 0, dense cosine < 0.5, and **None (n/a) under plain RRF**
+  since RRF encodes rank, not relevance. Reporter says so explicitly.
+- [ ] **FBL-006** — reranker logits do NOT reject near-domain negatives: all 3
+  no_answer questions (Podman/Nomad/GitLab CI) drew confidently positive logits
+  on near-miss content → negative precision 0% in the reranker A/B
+  (2026-07-06). The corpus answers out-of-scope questions with lookalike
+  content and no layer currently gates it. Ideas when picked up: calibrate a
+  higher logit threshold on a labelled negative set; or surface "weak match"
+  warnings in the MCP layer. Note: composite scores are not comparable between
+  runs whose negative metric differs in computability.
 
 ---
 
