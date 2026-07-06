@@ -60,7 +60,12 @@ Written at Phase 3 close (2026-07-06); the example values are from the
    ```bash
    RERANKER_ENABLED=true RERANKER_CANDIDATES=10 uv run uvicorn dev_rag.api:app --host 127.0.0.1 --port 8000
    ```
-   Wait for `Reranker loaded: BAAI/bge-reranker-v2-m3` in the log before querying.
+   Wait for `Application startup complete` before querying — the reranker
+   loads eagerly first (you'll see a `Loading weights: ... 393/393` progress
+   bar; first-ever run also downloads ~2.2 GB). The app's own
+   "Reranker loaded" INFO log does NOT appear under uvicorn's default
+   logging config — confirm instead with the step 6 health check, which
+   should now show `"reranker_enabled": true`.
 
 10. Repeat the step 7 curl.
     Expect ~15 s, a numeric `"reranker_score"` on every result, and
