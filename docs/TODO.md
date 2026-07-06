@@ -110,8 +110,13 @@ Books and sources to ingest as the system comes online:
   DEFAULT_QUERY verify smoke test is written for Deep Dive, so stage 8 failed
   until re-run with a Compose-specific `--query` (data was fine; verify-only).
   For future ingests always pass a book-specific `--query`, or make it required.
-- [ ] Ansible for DevOps (Geerling) — **already owned**;
-  the standard Ansible reference; ingest after Docker books are working
+- [x] Ansible for DevOps (Geerling) — ✅ 2026-07-06: 499 chunks, corpus
+  parity 1082/1082/1082; stage-8 verify passed first try with the
+  book-specific --query (inventory question). Post-ingest eval re-baseline
+  `eval/baselines/2026-07-06_hybrid_rrf_3books.json`: R@1 88 (-4: devops-025's
+  Compose chunk slipped to #2), R@3 100 (held), MRR 93.3, composite 93.5.
+  devops-027 GitLab negative re-verified (mentions incidental; Jenkins
+  chapter + GH Actions now strong near-miss bait — the test got harder).
 - [ ] Ansible for Real-Life Automation (Madapparambath, Packt 2022) — **already owned**;
   practical production use cases, Ansible Vault for secrets, container
   management, CI/CD integration; complements Geerling — Geerling teaches

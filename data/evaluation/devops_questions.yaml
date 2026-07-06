@@ -526,9 +526,12 @@
   requires_graph: false
   requires_multi_source: false
   notes: >
-    Replacement negative for the converted devops-019. GitLab appears in
-    NEITHER book (verified 0 hits) — but the Compose book covers Bitbucket
-    Pipelines and GitHub Actions, so retrieval has tempting near-miss bait.
+    Replacement negative for the converted devops-019. Re-verified after the
+    Ansible-for-DevOps ingest (2026-07-06): GitLab appears only incidentally
+    (a file-permissions example p338, "if you use GitLab use GitLab CI"
+    aside p389, a Molecule CI list p393) — no actual GitLab CI pipeline
+    coverage, so the negative stands. But the bait is now much stronger:
+    a full Jenkins chapter, a GitHub Actions section, Bitbucket Pipelines.
     Returning those as if they answer GitLab CI is the failure this tests.
 
 - id: devops-028
