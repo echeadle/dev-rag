@@ -2,44 +2,35 @@
 _Last updated: 2026-07-05_
 
 ## Active Files
-src/dev_rag/{retrieve,retrieve_sparse,retrieve_hybrid,api}.py,
-migrations/003_fts_update_trigger.sql, docs/RUNBOOK.md, docs/TODO.md
+mcp/server.py, mcp/tests/, src/dev_rag/{api,settings}.py, .mcp.json
 
 ## Current Step
-PHASE 2 (hybrid search) COMPLETE on feat/phase2-hybrid-search (8 commits,
-NOT pushed — Ed reviews, runs, merges). Suite 106 passed.
-- /search LIVE in dense|sparse|hybrid with canonical relevance_score
-  (per-mode scales: RRF ~0.03 / cosine 0-1 / BM25 unbounded — api.py docstring)
-- /health real parity counts, drift -> degraded (OBS-009 closed)
-- FBL-001 closed (003 migration: FTS UPDATE trigger, tested)
-- OBS-006 closed: ablation on live corpus, porter ascii KEPT; hybrid ≥ dense
-  on all 6 queries, one clear sparse win (compose secrets). Recorded in
-  planning/hybrid-search-spec.md.
-- Design deviation (documented in retrieve_sparse.py): BM25 queries are
-  sanitised + OR-joined — FTS5's implicit AND zeroed recall on sentences.
-- e2e tests hit the real endpoint (temp stores via real migrations);
-  tests/test_api.py isolates via autouse fixture (never real BGE-M3).
-- Runbook §5: uvicorn + curl verified live (first query ~9s model load,
-  then ~105ms hybrid / ~4ms sparse).
+MCP smoke slice MERGED to main (after Phase 2 merge earlier today):
+- e2e stdio smoke tests: MCP server against the real API
+- /collections endpoint: real ChromaDB counts per domain
+- project .mcp.json registers the dev-rag stdio server
+- Live check passed in a real Claude Code session: rag_health (311 devops
+  chunks, stores in parity), list_collections, search_devops end-to-end
+- reranker_enabled default flipped to False — health was advertising a
+  reranker that is still a Phase 3 stub; flip back when reranker.py is real
+- Suite 111 passed (tests/ + mcp/tests both collected)
 
 ## Next Action
-1. Ed: review feat/phase2-hybrid-search, try runbook §5 (uvicorn + curl),
-   merge to main.
-2. Then pick: MCP wiring+smoke (makes Claude Code sessions query the corpus —
-   small, high payoff), Phase 3 reranker, or ingest second book
-   (Docker Compose PDF — also fills the "bind mount permissions" corpus gap
-   the ablation exposed).
+Pick next slice:
+1. Ingest second book (Docker Compose PDF) — RECOMMENDED: live check
+   confirmed the "bind mount permissions" corpus gap (query returned only
+   loosely related passages); also regression-tests the ingest pipeline.
+2. Phase 3 reranker — more measurable once the corpus has >1 book.
 
-## Done When (Phase 2) — ALL MET
-- [x] /search real results in all 3 modes with relevance_score
-- [x] e2e test on real endpoint; 22 mcp fixture tests untouched & green
-- [x] FBL-001 (003 migration) + OBS-009 closed
-- [x] OBS-006 ablation run + recorded; suite green (106); runbook updated
+## Done When (MCP smoke) — ALL MET
+- [x] MCP server smoke-tested e2e against the real API (stdio)
+- [x] .mcp.json registration works in a real session (live check passed)
+- [x] Reviewed by Ed, tests green (111), merged to main
 
 ## Blockers
 None. Parked: eval baseline P4 (FBL-002/FBL-005 scorer fixes + OBS-003),
 structure+enrich (FBL-004 cost gate), reranker P3, GraphRAG P8, headroom-ai.
 
 ## Phase
-Phase 2 COMPLETE, pending Ed's review + merge. MCP server now has a real
-API behind it but is not yet smoke-tested.
+Between phases: Phase 2 + MCP smoke both merged. Next: second-book ingest
+(recommended) or Phase 3 reranker.

@@ -37,8 +37,8 @@ class Settings(BaseSettings):
     dense_candidates: int = 20
     sparse_candidates: int = 20
 
-    # Reranker
-    reranker_enabled: bool = True
+    # Reranker (reranker.py is a stub until Phase 3 — keep disabled by default)
+    reranker_enabled: bool = False
     reranker_model: str = "BAAI/bge-reranker-v2-m3"
     reranker_top_n: int = 10
     reranker_candidates: int = 50
