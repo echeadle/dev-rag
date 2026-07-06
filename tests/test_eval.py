@@ -61,7 +61,8 @@ def test_loader_parses_real_devops_file():
     by_id = {x.id: x for x in questions}
     # OBS-003: placeholders are gone — every expected_source is a real filename
     real = {"dockerdeepdive.pdf",
-            "A_DEVELOPERS_ESSENTIAL_GUIDE_TO_DOCKER_COMPOSE.pdf"}
+            "A_DEVELOPERS_ESSENTIAL_GUIDE_TO_DOCKER_COMPOSE.pdf",
+            "ansible-for-real-life-automation.pdf"}
     populated = [x for x in questions if x.expected_source]
     assert len(populated) >= 25
     assert {x.expected_source for x in populated} == real

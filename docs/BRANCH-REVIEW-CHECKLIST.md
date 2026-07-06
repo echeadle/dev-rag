@@ -11,6 +11,8 @@ A phase-specific section is added at each phase close.
 - **Fourth-book ingest** (feat/ingest-ansible-real-life): see "Fourth-Book
   Ingest Review" at the bottom — data/measurement review + the reranker A/B
   that reopened ADR-012.
+- **Eval RLA positive** (feat/eval-rla-positive): see "Eval RLA Positive
+  Review" at the bottom — adds devops-034, closes the added-value blind spot.
 
 ## Steps (generic + Phase 3 example)
 
@@ -271,3 +273,58 @@ not the composite, for the reranker delta.
     reopen criterion (R@3 delta ≥ +3) is now met at +8, but latency is still
     ~100×. That call is yours; it is recorded in `docs/TODO.md` and
     `current_context.md`, not flipped.
+
+---
+
+# Eval RLA Positive Review (feat/eval-rla-positive)
+
+**What this review verifies.** A small ground-truth change: it adds
+**devops-034**, the first eval question whose expected source is an Ansible
+book, closing the "added value" blind spot (before this, no question pointed
+at an Ansible book, so a new book could only register as *erosion*). The
+question targets content **exclusive** to the RLA book — a Jenkins multibranch
+pipeline running Ansible (`multibranch`/`Jenkinsfile` appear in 0 chunks of
+the other three books). One test changes: `test_eval.py`'s `real` set of
+expected-source filenames gains the RLA filename (the test literally encoded
+the blind spot). The RRF baseline is re-cut on the now-37-question set.
+
+**What "pass" looks like.** 139 green. devops-034 scores 1.0 on
+R@1/R@3/MRR/chunk_match with top-1 `ansible-for-real-life-automation.pdf`. The
+37q RRF aggregate reproduces R@1 84.6%, R@3 92.3%, MRR 89.4%, Composite 88.3%.
+
+## Steps
+
+1. `git checkout feat/eval-rla-positive`
+2. `git diff main --stat` — expect **7 files**: 6 modified (this checklist
+   file included) + 1 new baseline (`_hybrid_rrf_4books_37q.json`). The only
+   *code* change is one line in `tests/test_eval.py`; the rest are the new
+   eval question and doc updates.
+3. `git diff main -- data/evaluation/devops_questions.yaml` — read the
+   devops-034 block and its verification note (exclusivity + live pre-check).
+4. Confirm the exclusivity claim yourself:
+   ```bash
+   for b in dockerdeepdive a_developers_essential_guide_to_docker_compose \
+            ansible-for-devops ansible-for-real-life-automation; do
+     printf "%-45s %s\n" "$b" \
+       "$(grep -o -i multibranch data/chunks/${b}_chunks.json | wc -l)"
+   done
+   ```
+   — only `ansible-for-real-life-automation` is non-zero.
+5. `uv run pytest` — expect **139 passed**.
+6. `uv run uvicorn dev_rag.api:app --host 127.0.0.1 --port 8000`
+7. In a second terminal — reproduce the 37q baseline:
+   ```bash
+   uv run python eval/run_eval.py --domain devops --no-save \
+       --compare eval/baselines/2026-07-06_hybrid_rrf_4books_37q.json
+   ```
+   — expect R@1 84.6%, R@3 92.3%, MRR 89.4%, +0.0% deltas, and devops-034
+   NOT among the failures (the two failures stay devops-020 + para-001b).
+8. Ctrl-C the server.
+9. If satisfied:
+   ```bash
+   git checkout main
+   git merge --no-ff feat/eval-rla-positive
+   git push origin main
+   ```
+   Note: the reranker baseline is still 36q and is intentionally refreshed to
+   37q in the next slice (FBL-006), not here.

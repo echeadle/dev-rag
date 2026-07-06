@@ -285,6 +285,15 @@ is working and evaluated.
 
 ## Backlog — dev-rag Future Phases
 
+- [x] **Eval "added value" blind spot** — ✅ 2026-07-06
+  (`feat/eval-rla-positive`): added devops-034, the first eval positive
+  targeting the RLA book's unique content ("multibranch pipeline in Jenkins
+  to run Ansible", exclusive to RLA). Before this, no question pointed at an
+  Ansible book, so a new book's ingest could only be measured as *erosion*.
+  New 37q RRF baseline `2026-07-06_hybrid_rrf_4books_37q.json` (R@1 84.6 / R@3
+  92.3 / MRR 89.4). Still open: Geerling (ansible-for-devops.pdf) has no
+  positive either — add one when convenient. Shared-topic candidate parked:
+  "manage Docker containers using Ansible" (RLA top-1/2 but Geerling competes).
 - [ ] GraphRAG spec — write when Phase 4 baseline is established
 - [ ] Multi-source coverage metric in eval harness
 - [ ] Graph-lift metric (after GraphRAG is implemented)
