@@ -6,8 +6,9 @@ src/dev_rag/{reranker,api,settings}.py, tests/test_reranker.py,
 tests/{test_api,test_api_e2e}.py, mcp/tests/test_mcp_e2e.py, docs/RUNBOOK.md
 
 ## Current Step
-PHASE 3 (reranker) COMPLETE on feat/phase3-reranker (NOT merged, NOT
-pushed — Ed reviews, merges). Suite 127 passed (was 113; +12 unit +2 e2e).
+PHASE 3 (reranker) MERGED to main + pushed (827b36d, 2026-07-06) after
+Ed's live off/on review. Suite 127 passed on merged main (+12 unit +2 e2e).
+docs/BRANCH-REVIEW-CHECKLIST.md added during review (reusable).
 - reranker.py real: RankedResult, rerank(), rerank_with_fallback() (OBS-002:
   every path returns RankedResult; reranker_score=None marks fallback).
 - api.py: lifespan eager-load when enabled (OBS-010); hybrid = two-stage
@@ -25,10 +26,9 @@ pushed — Ed reviews, merges). Suite 127 passed (was 113; +12 unit +2 e2e).
   (stub list, test count 127, current state).
 
 ## Next Action
-1. Ed: review feat/phase3-reranker, optionally try runbook §5b A/B, merge.
-2. Then: Phase 4 eval harness (FBL-002/FBL-005 scorer fixes + OBS-003
-   expected_source) — it decides the reranker default with real numbers.
-   Alt: ingest Ansible for DevOps (remember book-specific --query).
+Phase 4 eval harness (FBL-002/FBL-005 scorer fixes + OBS-003
+expected_source) — it decides the reranker default with real numbers.
+Alt: ingest Ansible for DevOps (remember book-specific --query).
 
 ## Done When (Phase 3) — ALL MET
 - [x] reranker.py real, wired, OBS-002 fallback proven (unit + e2e + live)
@@ -40,4 +40,4 @@ None. Parked: smaller reranker model (bge-reranker-base) until Phase 4 eval;
 structure+enrich (FBL-004 cost gate), GraphRAG P8, headroom-ai.
 
 ## Phase
-Phase 3 COMPLETE, pending Ed's review + merge. Phase 4 (eval) is next.
+Phase 3 COMPLETE + merged. Phase 4 (eval) is next.
