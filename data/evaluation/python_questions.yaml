@@ -46,7 +46,9 @@
   domain: python
   category: factual
   failure_mode: basic_semantic_mismatch
-  expected_source: "five-lines-of-code.pdf"
+  # OBS-003 (2026-07-06): was placeholder "five-lines-of-code.pdf" — that book
+  # is NOT ingested. Set to the exact ingested filename when it is.
+  expected_source: null
   expected_chunk_contains:
     - "five"
   no_answer: false

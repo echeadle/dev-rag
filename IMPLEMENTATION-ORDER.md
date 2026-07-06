@@ -221,53 +221,52 @@ enrichment earns its cost, and gated on the FBL-004 cost estimate
 
 ---
 
-## Phase 4 — Evaluation Harness
+## Phase 4 — Evaluation Harness ✅ 2026-07-06
 
 *Goal: Objective baseline score before any further changes.*
 *Spec: `planning/dev-rag-evaluation-strategy.md`*
 
-- [ ] Create `data/evaluation/` directory
-- [ ] Implement `eval/loader.py`
-- [ ] Implement `eval/runner.py`
-- [ ] Implement `eval/scorer.py`
-- [ ] Implement `eval/reporter.py`
-- [ ] Implement `eval/run_eval.py`
-- [ ] Write initial `data/evaluation/devops_questions.yaml`
-  (start with the 9 questions from the evaluation strategy doc)
-- [ ] Run harness for the first time: `uv run python eval/run_eval.py --domain devops`
-- [ ] Save the baseline JSON — note the path printed at the end
-- [ ] Record baseline scores in the table below
+- [x] `data/evaluation/` directory (existed with 43 question bodies)
+- [x] Implement `eval/loader.py`
+- [x] `eval/runner.py` (already real; added search_mode/base_url passthrough)
+- [x] `eval/scorer.py` (already real; FBL-002 + FBL-005 fixed here)
+- [x] Implement `eval/reporter.py`
+- [x] Implement `eval/run_eval.py`
+- [x] `data/evaluation/devops_questions.yaml` (29 bodies existed; grown to 36)
+- [x] Run harness: `uv run python eval/run_eval.py --domain devops`
+- [x] Baseline saved: `eval/baselines/2026-07-06_hybrid_rrf.json` (tracked)
+- [x] Baseline scores recorded below
 
-**Baseline scores (fill in after first run):**
+**Baseline scores (2026-07-06, hybrid RRF, 36 questions / 25 ground-truthed):**
 
-| Metric | Baseline |
-|--------|----------|
-| Retrieval@1 | |
-| Retrieval@3 | |
-| MRR | |
-| Chunk Match | |
-| Negative Precision | |
-| Composite Score | |
+| Metric | Baseline | + reranker@10 |
+|--------|----------|---------------|
+| Retrieval@1 | 92.0% | 96.0% |
+| Retrieval@3 | 100% | 100% |
+| MRR | 95.3% | 98.0% |
+| Chunk Match | 84.6% | 88.5% |
+| Negative Precision | n/a (FBL-005: RRF) | 0.0% (FBL-006) |
+| Composite Score | 94.1% | 81.6% (not comparable — see ADR-012) |
 
 **Checkpoint:** Eval harness running, baseline established. ✓
+Reranker default stays OFF per ADR-012 measured table (R@3 delta 0).
 
 ---
 
-## Phase 4b — Grow Eval Question Set
+## Phase 4b — Grow Eval Question Set ✅ 2026-07-06
 
 *Goal: 25 questions with `expected_source` populated before trusting --compare deltas.*
 *Decision: Athens, June 2026 — minimum threshold before gating migrations.*
 
-- [ ] After ingesting Docker Deep Dive, check which source filename appears
-  in results: `search_devops("docker secrets")`
-- [ ] Update `expected_source` on `devops-001` to match actual filename
-- [ ] Write questions 9–25 in `devops_questions.yaml` based on real queries
-  you run during Phase 1 usage — questions that arise organically are best
-- [ ] Ensure at least 3 questions per category: factual, security, comparison,
-  architecture, source_specific, negative, chunk_boundary
-- [ ] Run harness: `uv run python eval/run_eval.py --domain devops`
-- [ ] Confirm `questions_with_expected_source` ≥ 25 in aggregate output
-- [ ] Save this as the **official baseline JSON** for all future `--compare` runs
+- [x] Real source filenames confirmed: `dockerdeepdive.pdf`,
+  `A_DEVELOPERS_ESSENTIAL_GUIDE_TO_DOCKER_COMPOSE.pdf`
+- [x] Every expected_source verified against chunk artifacts (grep
+  data/chunks/*.json) — never guessed from titles
+- [x] Grown to 36 devops questions (7 added: 6 verified single-book
+  positives + GitLab-CI negative replacing converted devops-019)
+- [x] ≥3 questions per major category
+- [x] Harness run: `questions_with_expected_source: 25` confirmed
+- [x] Official baseline saved: `eval/baselines/2026-07-06_hybrid_rrf.json`
 
 **Checkpoint:** 25+ questions, baseline trustworthy for delta comparisons. ✓
 

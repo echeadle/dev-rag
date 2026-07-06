@@ -6,6 +6,11 @@ OBS-003 note: expected_source must be populated on questions for
   Retrieval@k, MRR, and composite to compute. Questions with
   expected_source=null contribute only to chunk_match and
   negative_precision metrics.
+FBL-002 fix: expected_source matching is EXACT everywhere (== on the
+  ingested filename) — Retrieval@k and MRR agree. Substring matching
+  would blur the two devops books, whose only discriminator is `source`.
+FBL-005 fix: negative precision is per-mode (see _negative_correct) —
+  under plain hybrid RRF it is None/not-computable, never a fake pass.
 """
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -47,7 +52,7 @@ def score_question(q, result) -> QuestionScore:
 
         score.mrr = 0.0
         for rank, source in enumerate(sources, 1):
-            if q.expected_source in source:
+            if source == q.expected_source:   # FBL-002: exact, like Retrieval@k
                 score.mrr = 1.0 / rank
                 break
 
@@ -58,13 +63,30 @@ def score_question(q, result) -> QuestionScore:
             for s in q.expected_chunk_contains
         ) else 0.0
 
-    # Negative precision — OBS-001 fix: read relevance_score not score
+    # Negative precision — OBS-001: read relevance_score; FBL-005: per-mode
     if q.no_answer:
-        score.negative_correct = len(result.results) == 0 or (
-            result.results[0].get("relevance_score", 1.0) < 0.5
-        )
+        score.negative_correct = _negative_correct(result)
 
     return score
+
+
+def _negative_correct(result) -> bool | None:
+    """
+    FBL-005: "no answer" is only judgeable on a score that carries
+    relevance semantics. Cross-encoder logits (< 0 ≈ irrelevant, sigmoid
+    < 0.5) and dense cosine (< 0.5) qualify. Plain hybrid RRF scores
+    encode RANK, not relevance (max ≈ 0.033), so no threshold on them
+    means anything — return None (metric not computable this run) rather
+    than the old always-true `< 0.5` fake pass.
+    """
+    if not result.results:
+        return True
+    top = result.results[0]
+    if top.get("reranker_score") is not None:
+        return top["reranker_score"] < 0.0
+    if getattr(result, "search_mode", None) == "dense":
+        return top.get("relevance_score", 1.0) < 0.5
+    return None
 
 
 def compute_aggregate_metrics(scores: list[QuestionScore]) -> dict:

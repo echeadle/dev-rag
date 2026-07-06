@@ -1,46 +1,55 @@
 # dev-rag DevOps evaluation questions
 # Schema and full question set: planning/dev-rag-evaluation-strategy.md
+#
+# OBS-003 resolved (Phase 4b, 2026-07-06): expected_source values are the
+# EXACT ingested filenames and every non-null value was verified against
+# the chunk artifacts (data/chunks/*.json) — the named book demonstrably
+# contains the answer. null + a note means the topic is genuinely
+# multi-source or a known corpus gap, not an unfinished placeholder.
+#   dockerdeepdive.pdf                                  (311 chunks)
+#   A_DEVELOPERS_ESSENTIAL_GUIDE_TO_DOCKER_COMPOSE.pdf  (272 chunks)
 
 - id: devops-001
   question: "What is the production-safe way to store secrets in Docker Compose and why are environment variables not sufficient?"
   domain: devops
   category: security
   failure_mode: production_vs_tutorial_confusion
-  expected_source: null   # populate with your actual PDF filename after ingestion
+  expected_source: "A_DEVELOPERS_ESSENTIAL_GUIDE_TO_DOCKER_COMPOSE.pdf"
   expected_chunk_contains:
     - "secrets"
   no_answer: false
   requires_graph: false
   requires_multi_source: false
   notes: >
-    OBS-003: set expected_source to the actual ingested filename (e.g.
-    "docker-deep-dive.pdf") before the first baseline eval run, so
-    Retrieval@k and MRR compute. Leave null until the book is ingested.
+    Verified: Compose-book secrets coverage (20 chunks match secret+compose);
+    Deep Dive covers swarm secrets, but the question asks Compose specifically.
 
 - id: devops-002
   question: "What is the difference between bridge, host, and overlay networks in Docker, and when should each be used?"
   domain: devops
   category: comparison
   failure_mode: single_concept_bias
-  expected_source: null
+  expected_source: "dockerdeepdive.pdf"
   expected_chunk_contains:
     - "bridge"
     - "host"
   no_answer: false
   requires_graph: false
   requires_multi_source: false
+  notes: "Verified: Deep Dive networking chapter (27 overlay-network chunks; CG has 2)."
 
 - id: devops-003
   question: "Why is running a container as root considered a security risk and what are the recommended alternatives?"
   domain: devops
   category: security
   failure_mode: best_practice_vs_default_behavior
-  expected_source: null
+  expected_source: "dockerdeepdive.pdf"
   expected_chunk_contains:
     - "root"
   no_answer: false
   requires_graph: false
   requires_multi_source: false
+  notes: "Verified: Deep Dive security chapter (root+security 7 chunks; CG 0)."
 
 - id: devops-004
   question: "At what point does an organization outgrow Docker Compose and need Kubernetes?"
@@ -52,6 +61,10 @@
   no_answer: false
   requires_graph: false
   requires_multi_source: true
+  notes: >
+    Left null deliberately: neither book has real decision content — the
+    Compose book's Kubernetes mentions are author-bio/front-matter, verified
+    2026-07-06. Genuine multi-source/decision question.
 
 - id: devops-005
   question: "What techniques are commonly used to achieve zero-downtime deployments and what tradeoffs does each approach have?"
@@ -63,23 +76,24 @@
   no_answer: false
   requires_graph: false
   requires_multi_source: true
+  notes: >
+    Left null deliberately: rolling-update content splits evenly (3 chunks
+    each book, verified); no zero-downtime chunks anywhere. Multi-source.
 
 - id: devops-006
   question: "According to your sources, what are the most important container security recommendations?"
   domain: devops
   category: source_specific
   failure_mode: provenance_failure
-  # OBS-003: set this to your actual ingested filename, e.g. "docker-deep-dive.pdf"
-  # Without a value here, source_precision and Retrieval@k never compute.
-  expected_source: "docker-deep-dive.pdf"
+  expected_source: "dockerdeepdive.pdf"
   expected_chunk_contains:
     - "security"
   no_answer: false
   requires_graph: false
   requires_multi_source: false
   notes: >
-    Update expected_source to match the exact filename returned by your
-    /search results after ingestion. Check with: search_devops("container security")
+    OBS-003 fixed 2026-07-06: was placeholder "docker-deep-dive.pdf".
+    Verified: Deep Dive ch16 owns container security (CG: 0 matching chunks).
 
 - id: devops-007
   question: "What are the best practices for managing Podman rootless containers in production?"
@@ -91,19 +105,22 @@
   no_answer: true
   requires_graph: false
   requires_multi_source: false
-  notes: "Negative test — Podman content should not be in the DevOps corpus."
+  notes: >
+    Negative test — Podman is not covered (verified: one passing mention in
+    Deep Dive p16, no actual Podman guidance anywhere).
 
 - id: devops-008
   question: "What are the complete steps to configure a custom Docker bridge network?"
   domain: devops
   category: chunk_boundary
   failure_mode: chunker_splits_procedure
-  expected_source: null
+  expected_source: "dockerdeepdive.pdf"
   expected_chunk_contains:
     - "docker network create"
   no_answer: false
   requires_graph: false
   requires_multi_source: false
+  notes: "Verified: 'docker network create' appears in 5 Deep Dive chunks; CG 0."
 
 # ---------------------------------------------------------------------------
 # FACTUAL (devops-009, devops-010)
@@ -115,22 +132,22 @@
   domain: devops
   category: factual
   failure_mode: basic_semantic_mismatch
-  expected_source: null
+  expected_source: "dockerdeepdive.pdf"
   expected_chunk_contains:
     - "layer"
   no_answer: false
   requires_graph: false
   requires_multi_source: false
   notes: >
-    Fundamental Docker concept. If this doesn't retrieve a clear explanation
-    of layers and caching, basic semantic retrieval is broken.
+    Fundamental Docker concept — Deep Dive images chapter (layer+cache
+    8 chunks; CG 0). If this doesn't retrieve, basic retrieval is broken.
 
 - id: devops-010
   question: "What is the difference between a Docker image and a Docker container?"
   domain: devops
   category: factual
   failure_mode: basic_semantic_mismatch
-  expected_source: null
+  expected_source: "dockerdeepdive.pdf"
   expected_chunk_contains:
     - "image"
     - "container"
@@ -138,8 +155,8 @@
   requires_graph: false
   requires_multi_source: false
   notes: >
-    The most fundamental Docker distinction. Should be answered correctly
-    by any adequately ingested Docker corpus.
+    The most fundamental Docker distinction — Deep Dive is the book that
+    teaches it (verified p31 onwards); the Compose book assumes it.
 
 # ---------------------------------------------------------------------------
 # TROUBLESHOOTING (devops-011, devops-012)
@@ -157,23 +174,24 @@
   requires_graph: false
   requires_multi_source: false
   notes: >
-    Common real-world problem. Tests whether retrieval surfaces diagnostic
-    guidance (check logs, entrypoint issues) not just a definition of exit codes.
+    Left null deliberately: diagnostic content is thin in both books
+    (verified 2026-07-06). Tests whether retrieval surfaces operational
+    guidance at all; revisit when a troubleshooting-heavy book is ingested.
 
 - id: devops-012
   question: "A container can reach the internet but cannot connect to another container on the same host — what are the likely causes?"
   domain: devops
   category: troubleshooting
   failure_mode: symptom_without_cause
-  expected_source: null
+  expected_source: "dockerdeepdive.pdf"
   expected_chunk_contains: []
   no_answer: false
   requires_graph: false
   requires_multi_source: false
   notes: >
-    Networking troubleshooting question. Answer should involve network mode,
-    same network membership, and DNS resolution between containers. Tests
-    whether retrieval surfaces operational causes rather than network definitions.
+    Verified (moderate confidence): Deep Dive networking chapter covers DNS
+    and same-network membership (4 chunks; CG 1). Answer should involve
+    network mode, shared network membership, and container DNS.
 
 # ---------------------------------------------------------------------------
 # COMPARISON (devops-013, devops-014)
@@ -188,13 +206,14 @@
   expected_source: null
   expected_chunk_contains:
     - "COPY"
-    - "ADD"
   no_answer: false
   requires_graph: false
   requires_multi_source: false
   notes: >
-    Classic Docker comparison. Both COPY and ADD must appear in results.
-    If only COPY is returned, single-concept bias is confirmed.
+    Left null deliberately: verified 2026-07-06 that the ADD instruction is
+    likely NOT covered (probe hits were false positives — 'apk add').
+    Dropped "ADD" from expected_chunk_contains for the same reason; COPY is
+    verified. Honest partial-coverage question.
 
 - id: devops-014
   question: "What are the differences between Docker volumes, bind mounts, and tmpfs mounts and when should you use each?"
@@ -209,8 +228,10 @@
   requires_graph: false
   requires_multi_source: false
   notes: >
-    Three-way comparison — all three storage types should appear in results.
-    Good test of whether the retrieval pipeline handles multi-concept queries.
+    Left null deliberately: split topic — volumes are Deep Dive ch13, bind
+    mounts have better Compose-book coverage (3 vs 1 chunks), tmpfs appears
+    in NEITHER book (verified). Three-way comparison the corpus only
+    partially covers.
 
 # ---------------------------------------------------------------------------
 # SECURITY (devops-015)
@@ -222,16 +243,15 @@
   domain: devops
   category: security
   failure_mode: production_vs_tutorial_confusion
-  expected_source: null
+  expected_source: "dockerdeepdive.pdf"
   expected_chunk_contains:
     - "cap"
   no_answer: false
   requires_graph: false
   requires_multi_source: false
   notes: >
-    Production security question. Answer should reference --cap-drop=ALL
-    and specific capabilities needed. Tutorials rarely cover this level
-    of detail — tests whether the corpus goes beyond the basics.
+    Verified: Deep Dive ch16 capabilities section (CAP_* + least privilege,
+    p253; CG 0). Tests whether the corpus goes beyond tutorial basics.
 
 # ---------------------------------------------------------------------------
 # CROSS-DOCUMENT (devops-016, devops-017)
@@ -264,12 +284,12 @@
   requires_graph: false
   requires_multi_source: true
   notes: >
-    Spans Docker networking and host security — likely across multiple
-    chapters. Tests cross-document synthesis on a production concern
-    that tutorials almost never cover correctly.
+    Left null deliberately: KNOWN CORPUS GAP — firewall/iptables content is
+    nearly absent (1 weak mention, verified 2026-07-06). Expect this to fail
+    until the Ansible/Ubuntu Server books are ingested; that's the point.
 
 # ---------------------------------------------------------------------------
-# NEGATIVE / NO-ANSWER (devops-018, devops-019)
+# NEGATIVE / NO-ANSWER (devops-018, devops-027)
 # Tests hallucination-via-retrieval — corpus should NOT answer these.
 # ---------------------------------------------------------------------------
 
@@ -284,24 +304,27 @@
   requires_graph: false
   requires_multi_source: false
   notes: >
-    Nomad is not Docker — should return empty or below-threshold results.
+    Nomad is not covered (verified: one passing mention in Deep Dive p182).
     If the system returns Docker Swarm or Kubernetes chunks as a substitute,
     that is a hallucination-via-retrieval failure.
 
 - id: devops-019
-  question: "What are the Terraform best practices for managing AWS ECS task definitions?"
+  question: "How do you provision an ECS cluster with Terraform to deploy a Docker Compose application on AWS?"
   domain: devops
-  category: negative
-  failure_mode: hallucination_via_retrieval
-  expected_source: null
-  expected_chunk_contains: []
-  no_answer: true
+  category: source_specific
+  failure_mode: provenance_failure
+  expected_source: "A_DEVELOPERS_ESSENTIAL_GUIDE_TO_DOCKER_COMPOSE.pdf"
+  expected_chunk_contains:
+    - "Terraform"
+  no_answer: false
   requires_graph: false
   requires_multi_source: false
   notes: >
-    Terraform and ECS are out of corpus scope. Should return empty results.
-    A false positive here (returning Docker content as if it answers the
-    question) is a dangerous failure mode for a production guidance tool.
+    CONVERTED from negative to positive 2026-07-06: the original negative
+    ("Terraform best practices for AWS ECS") broke when the Compose book was
+    ingested — its ch12 covers exactly this (Provision ECR/ECS with
+    Terraform, 26 matching chunks, verified). Replacement negative is
+    devops-027 (GitLab CI).
 
 # ---------------------------------------------------------------------------
 # CHUNK BOUNDARY (devops-020)
@@ -313,7 +336,7 @@
   domain: devops
   category: chunk_boundary
   failure_mode: chunker_splits_procedure
-  expected_source: null
+  expected_source: "dockerdeepdive.pdf"
   expected_chunk_contains:
     - "docker build"
     - "docker push"
@@ -321,9 +344,9 @@
   requires_graph: false
   requires_multi_source: false
   notes: >
-    Three-step procedure (build, tag, push) that may be split across chunks.
-    If the top result contains docker build but not docker push, the chunker
-    split the procedure and chunk_size or overlap needs to increase.
+    Verified: Deep Dive covers the build/tag/push flow ('docker push' in 6
+    chunks). Three-step procedure that may be split across chunks — if the
+    top result has docker build but not docker push, the chunker split it.
 
 # ---------------------------------------------------------------------------
 # ADVERSARIAL PARAPHRASE (devops-para-001a/b/c)
@@ -337,13 +360,16 @@
   category: adversarial_paraphrase
   failure_mode: vocabulary_mismatch
   paraphrase_group: docker-secrets-mechanism
-  expected_source: null
+  expected_source: "dockerdeepdive.pdf"
   expected_chunk_contains:
     - "secrets"
   no_answer: false
   requires_graph: false
   requires_multi_source: false
-  notes: "Paraphrase group anchor — direct, minimal phrasing."
+  notes: >
+    Paraphrase group anchor. Verified: the secrets MECHANISM (encrypted
+    cluster store, in-memory mount) is Deep Dive ch16; the Compose book
+    covers Compose secrets usage, not the mechanism.
 
 - id: devops-para-001b
   question: "What is the mechanism for passing sensitive data to containers securely?"
@@ -351,7 +377,7 @@
   category: adversarial_paraphrase
   failure_mode: vocabulary_mismatch
   paraphrase_group: docker-secrets-mechanism
-  expected_source: null
+  expected_source: "dockerdeepdive.pdf"
   expected_chunk_contains:
     - "secrets"
   no_answer: false
@@ -365,7 +391,7 @@
   category: adversarial_paraphrase
   failure_mode: vocabulary_mismatch
   paraphrase_group: docker-secrets-mechanism
-  expected_source: null
+  expected_source: "dockerdeepdive.pdf"
   expected_chunk_contains:
     - "secrets"
   no_answer: false
@@ -386,21 +412,19 @@
   domain: devops
   category: source_specific
   failure_mode: provenance_failure
-  expected_source: "docker-deep-dive.pdf"
+  expected_source: "dockerdeepdive.pdf"
   expected_chunk_contains:
     - "multi-stage"
   no_answer: false
   requires_graph: false
   requires_multi_source: false
   notes: >
-    Explicitly names the source. If the correct content is returned from
-    a different source, or if the expected_source doesn't rank first,
-    the provenance tracking or source weighting has a problem.
-    Update expected_source to match actual ingested filename.
+    OBS-003 fixed 2026-07-06: was placeholder "docker-deep-dive.pdf".
+    Verified: multi-stage builds in 11 Deep Dive chunks; CG 0. Explicitly
+    names the source — provenance test.
 
 # ---------------------------------------------------------------------------
-# ARCHITECTURE (devops-022)
-# Rounds out to 25 questions — decision-support content.
+# ARCHITECTURE (devops-022, devops-023)
 # ---------------------------------------------------------------------------
 
 - id: devops-022
@@ -408,23 +432,21 @@
   domain: devops
   category: architecture
   failure_mode: description_vs_decision_support
-  expected_source: null
+  expected_source: "dockerdeepdive.pdf"
   expected_chunk_contains: []
   no_answer: false
   requires_graph: false
   requires_multi_source: false
   notes: >
-    Classic Docker design question with a nuanced answer — one process per
-    container is the convention but not an absolute rule. Tests whether
-    the corpus returns decision-support guidance rather than just the
-    "one process per container" rule without explanation.
+    Verified: Deep Dive states the single-process convention with reasoning
+    (p79, p88). Tests decision-support retrieval, not just the rule.
 
 - id: devops-023
   question: "What is the difference between ENTRYPOINT and CMD in a Dockerfile and how do they interact when both are specified?"
   domain: devops
   category: comparison
   failure_mode: single_concept_bias
-  expected_source: null
+  expected_source: "dockerdeepdive.pdf"
   expected_chunk_contains:
     - "ENTRYPOINT"
     - "CMD"
@@ -432,15 +454,11 @@
   requires_graph: false
   requires_multi_source: false
   notes: >
-    Classic Docker question with a subtle answer — CMD provides default
-    arguments that can be overridden at runtime, ENTRYPOINT sets the
-    executable that always runs. The interaction when both are specified
-    (CMD becomes arguments to ENTRYPOINT) is where tutorials often fall
-    short. Tests whether the corpus returns the complete nuanced explanation.
+    Verified: ENTRYPOINT+CMD co-occur in 15 Deep Dive chunks (CG 1).
+    The interaction when both are specified is where tutorials fall short.
 
 # ---------------------------------------------------------------------------
 # DOCKER COMPOSE SPECIFIC (devops-024, devops-025, devops-026)
-# Enabled after A Developer's Essential Guide to Docker Compose is ingested.
 # Tests Compose-specific depth that Docker Deep Dive doesn't cover fully.
 # ---------------------------------------------------------------------------
 
@@ -449,7 +467,7 @@
   domain: devops
   category: troubleshooting
   failure_mode: symptom_without_cause
-  expected_source: null
+  expected_source: "A_DEVELOPERS_ESSENTIAL_GUIDE_TO_DOCKER_COMPOSE.pdf"
   expected_chunk_contains:
     - "depends_on"
     - "healthcheck"
@@ -457,17 +475,15 @@
   requires_graph: false
   requires_multi_source: false
   notes: >
-    Tests Compose-specific dependency ordering. The naive depends_on only
-    waits for container start, not service readiness. The answer should
-    cover condition: service_healthy. Good test of whether the Compose
-    book adds depth beyond Docker Deep Dive.
+    Verified: depends_on+healthcheck co-occur in 8 Compose-book chunks
+    (Deep Dive 0). Naive depends_on waits for start, not readiness.
 
 - id: devops-025
   question: "What is the difference between env_file and environment in a Docker Compose file and when should each be used?"
   domain: devops
   category: comparison
   failure_mode: single_concept_bias
-  expected_source: null
+  expected_source: "A_DEVELOPERS_ESSENTIAL_GUIDE_TO_DOCKER_COMPOSE.pdf"
   expected_chunk_contains:
     - "env_file"
     - "environment"
@@ -475,10 +491,8 @@
   requires_graph: false
   requires_multi_source: false
   notes: >
-    Practical Compose configuration question. Both keys must appear in
-    results. Tests whether the corpus returns the nuanced production
-    answer (env_file for secrets, environment for non-sensitive config)
-    rather than just defining both terms separately.
+    Verified: env_file in 7 Compose-book chunks (Deep Dive 1). Both keys
+    must appear in results — production answer, not two definitions.
 
 - id: devops-026
   question: "How do you scale a specific service in Docker Compose and what are the limitations compared to Kubernetes?"
@@ -492,6 +506,107 @@
   requires_graph: false
   requires_multi_source: true
   notes: >
-    Cross-document question — scaling syntax from the Compose book,
-    Kubernetes comparison likely from Docker Deep Dive or another source.
-    Tests whether the system synthesises across both books.
+    Left null deliberately: scaling content splits across both books and
+    the Compose book's hits are ECS-scaling prose, not compose-scale syntax
+    (verified 2026-07-06). Cross-document synthesis question.
+
+# ---------------------------------------------------------------------------
+# ADDED IN PHASE 4b (2026-07-06) — verified single-book topics that raise
+# the populated-expected_source count to 25.
+# ---------------------------------------------------------------------------
+
+- id: devops-027
+  question: "How do you configure a GitLab CI pipeline to build and deploy Docker images?"
+  domain: devops
+  category: negative
+  failure_mode: hallucination_via_retrieval
+  expected_source: null
+  expected_chunk_contains: []
+  no_answer: true
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Replacement negative for the converted devops-019. GitLab appears in
+    NEITHER book (verified 0 hits) — but the Compose book covers Bitbucket
+    Pipelines and GitHub Actions, so retrieval has tempting near-miss bait.
+    Returning those as if they answer GitLab CI is the failure this tests.
+
+- id: devops-028
+  question: "How do multi-architecture images and manifest lists work in Docker?"
+  domain: devops
+  category: factual
+  failure_mode: basic_semantic_mismatch
+  expected_source: "dockerdeepdive.pdf"
+  expected_chunk_contains:
+    - "multi-architecture"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: "Verified: Deep Dive images chapter section (p52); CG 0."
+
+- id: devops-029
+  question: "How does Docker Scout help with image vulnerability scanning?"
+  domain: devops
+  category: factual
+  failure_mode: basic_semantic_mismatch
+  expected_source: "dockerdeepdive.pdf"
+  expected_chunk_contains:
+    - "Scout"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: "Verified: Scout in 17 Deep Dive chunks; CG 0."
+
+- id: devops-030
+  question: "How do you deploy a Docker Compose application to Azure Container Instances?"
+  domain: devops
+  category: source_specific
+  failure_mode: provenance_failure
+  expected_source: "A_DEVELOPERS_ESSENTIAL_GUIDE_TO_DOCKER_COMPOSE.pdf"
+  expected_chunk_contains:
+    - "ACI"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: "Verified: Compose-book ch13 (ACI in 17 chunks, p212-221); Deep Dive 0."
+
+- id: devops-031
+  question: "How does Docker support running WebAssembly (Wasm) workloads alongside containers?"
+  domain: devops
+  category: factual
+  failure_mode: basic_semantic_mismatch
+  expected_source: "dockerdeepdive.pdf"
+  expected_chunk_contains:
+    - "Wasm"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: "Verified: Wasm in 22 Deep Dive chunks (newer-edition content); CG 0."
+
+- id: devops-032
+  question: "How do Docker restart policies work and which policy should be used for a long-running service?"
+  domain: devops
+  category: factual
+  failure_mode: basic_semantic_mismatch
+  expected_source: "dockerdeepdive.pdf"
+  expected_chunk_contains:
+    - "restart"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: "Verified: restart policies in 6 Deep Dive chunks (p78+); CG 0."
+
+- id: devops-033
+  question: "How do you split configuration across multiple Docker Compose files and combine them for different environments?"
+  domain: devops
+  category: source_specific
+  failure_mode: provenance_failure
+  expected_source: "A_DEVELOPERS_ESSENTIAL_GUIDE_TO_DOCKER_COMPOSE.pdf"
+  expected_chunk_contains:
+    - "Compose"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Verified: "multiple Compose files" in 4 Compose-book chunks (p144+);
+    Deep Dive 0. Dev/prod file-combination is a Compose-book specialty.
