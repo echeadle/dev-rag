@@ -96,6 +96,31 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
   higher logit threshold on a labelled negative set; or surface "weak match"
   warnings in the MCP layer. Note: composite scores are not comparable between
   runs whose negative metric differs in computability.
+  **New data 2026-07-06 (4-book reranker A/B):** still negative precision 0% /
+  hallucination 100% — but now with a concrete mechanism. devops-007's
+  reranker top-1 is the RLA book's Podman-*aside* chunk ("if you use Podman,
+  see containers.podman"): the 4th book handed the reranker a fresh
+  near-miss to confidently mis-rank. Ingesting more books makes this worse,
+  not better, until a gating layer exists.
+
+### Reranker default (ADR-012) — REOPENED 2026-07-06 by measured headroom
+- The 4th book pushed RRF R@3 off the ceiling (100→92), creating the first
+  real reranker headroom. Reranker A/B on the identical 4-book corpus
+  (candidates=10, `2026-07-06_reranker_c10_4books.json` vs
+  `2026-07-06_hybrid_rrf_4books.json`): **R@1 84→96 (+12), R@3 92→100 (+8),
+  MRR 89→98 (+9)**, chunk_match 80.8→92.3, paraphrase 0→100. The reranker
+  recovers exactly the cross-book erosion.
+- ADR-012's own reopen criterion (flip when R@3 delta ≥ +3) is now met (+8),
+  where the earlier same-candidates A/B saw R@3 delta 0. **Insight: reranker
+  value is corpus-dependent** — headroom appeared only once cross-book
+  competition did, not from any config change.
+- BUT latency is unchanged (~100×, ~21 s/query @10 on CPU), and FBL-006
+  (negatives) is now the visible failure mode. So the *tradeoff* genuinely
+  reopens; it is NOT automatically "turn it ON." **Decision is Ed's** (ADRs
+  are final) — recorded here, ADR-012 decision line left OFF pending review.
+  Composite (87.8→82.6) is NOT the metric to read here: it fell only because
+  neg-precision/hallucination went n/a→computable (see FBL-006 note); every
+  comparable retrieval metric improved.
 
 ---
 
@@ -117,10 +142,20 @@ Books and sources to ingest as the system comes online:
   Compose chunk slipped to #2), R@3 100 (held), MRR 93.3, composite 93.5.
   devops-027 GitLab negative re-verified (mentions incidental; Jenkins
   chapter + GH Actions now strong near-miss bait — the test got harder).
-- [ ] Ansible for Real-Life Automation (Madapparambath, Packt 2022) — **already owned**;
-  practical production use cases, Ansible Vault for secrets, container
-  management, CI/CD integration; complements Geerling — Geerling teaches
-  Ansible thoroughly, Madapparambath shows real production application
+- [x] Ansible for Real-Life Automation (Madapparambath, Packt 2022) —
+  ✅ 2026-07-06 (`feat/ingest-ansible-real-life`): 413 chunks, corpus parity
+  1495/1495/1495. Screenshot-heavy Packt book (480 pages → 413 chunks;
+  literal commands live in figures, so text chunks are thinner). Stage-8
+  verify passed first try with a Jenkins-CI/CD `--query`. Negatives
+  re-verified by reading hits: all 3 hold (Nomad 0, Podman 4 "use
+  containers.podman instead" asides, GitLab 9 incidental — its CI/CD chapter
+  is Jenkins-based); 007 + 027 notes updated. RRF re-baseline
+  `2026-07-06_hybrid_rrf_4books.json`: R@1 84 (-4), **R@3 92 (-8, off the
+  ceiling for the first time)**, MRR 89, paraphrase 0 (-100), composite 87.8
+  — all erosion from the RLA book competing with the Docker books
+  (devops-020 image-push, devops-para-001b secrets paraphrase), recorded not
+  fixed. **This R@3 drop reopened the reranker question** — see FBL-006 and
+  ADR-012 below.
 - [ ] Mastering Ansible, 4th Edition (Freeman, Packt 2021) — **already owned**;
   advanced internals, Python extensions, collections, Vault secrets,
   debugging and error recovery; completes the Ansible trilogy —

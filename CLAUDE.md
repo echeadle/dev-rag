@@ -60,8 +60,12 @@ Ingest tests never load real BGE-M3 — the model is always mocked.
   OBS-006 resolved: porter ascii kept (ablation in hybrid-search-spec.md).
 - **MCP smoke (2026-07-05):** MCP server smoke-tested e2e over real stdio;
   `.mcp.json` registers it for Claude Code sessions; `/collections` real counts.
-  Corpus: 3 books, 1082 chunks (Deep Dive + Compose guide + Ansible for
-  DevOps, ingested 2026-07-06 — current baseline is `_hybrid_rrf_3books.json`).
+  Corpus: 4 books, 1495 chunks (Deep Dive 311 + Compose guide 272 + Ansible
+  for DevOps 499 + Ansible for Real-Life Automation 413, last ingested
+  2026-07-06 on `feat/ingest-ansible-real-life`). Current RRF baseline is
+  `eval/baselines/2026-07-06_hybrid_rrf_4books.json` (R@1 84 / R@3 92 / MRR
+  89); the 4th book pushed R@3 off the ceiling and reopened the reranker
+  default — see the reranker A/B `_reranker_c10_4books.json` and ADR-012.
 - **Phase 3 (2026-07-06):** `reranker.py` real — bge-reranker-v2-m3 wired into
   hybrid mode with OBS-002 fallback, proven live. **Disabled by default**: on
   CPU it costs ~15 s/query @10 candidates (~112 s @50) vs ~0.15 s RRF-only.

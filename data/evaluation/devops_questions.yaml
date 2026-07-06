@@ -108,6 +108,11 @@
   notes: >
     Negative test — Podman is not covered (verified: one passing mention in
     Deep Dive p16, no actual Podman guidance anywhere).
+    Re-verified after the Ansible-for-Real-life-Automation ingest
+    (2026-07-06): 4 incidental hits (p271, p273, p274, p283), every one an
+    "if you use Podman instead of Docker, see the containers.podman
+    collection" aside — the book explicitly demonstrates with Docker. Still
+    no rootless / production Podman procedure anywhere; negative stands.
 
 - id: devops-008
   question: "What are the complete steps to configure a custom Docker bridge network?"
@@ -533,6 +538,13 @@
     coverage, so the negative stands. But the bait is now much stronger:
     a full Jenkins chapter, a GitHub Actions section, Bitbucket Pipelines.
     Returning those as if they answer GitLab CI is the failure this tests.
+    Re-verified after the Ansible-for-Real-life-Automation ingest
+    (2026-07-06): 9 GitLab hits but all incidental — GitLab as a Git-server
+    option (p104/p106/p109, listed beside Bitbucket/Gogs/Gitea) and as one
+    item in a CI/CD-tools list (p238: "Jenkins, CircleCI, GitLab, GitHub
+    Actions, Bamboo"); the book's own CI/CD chapter is built on Jenkins
+    (p351). The p477 "GitLab CI" line is back-matter for a different book.
+    No GitLab CI pipeline procedure; negative stands, bait stronger still.
 
 - id: devops-028
   question: "How do multi-architecture images and manifest lists work in Docker?"
