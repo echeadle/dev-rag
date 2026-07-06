@@ -19,7 +19,9 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
   Dive live at parity 311/311/311). Structure+enrich (spec stages 3+5) were
   deferred OUT of 1a — tracked in IMPLEMENTATION-ORDER.md under "Ingest
   Structure + Enrich (DEFERRED)", gated on FBL-004; NOT the same as Phase 1b below
-- [ ] **Phase 1b** — Wire up MCP server, ingest Docker Deep Dive, first query
+- [x] **Phase 1b** — Wire up MCP server, ingest Docker Deep Dive, first query
+  ✅ 2026-07-05 (feat/mcp-smoke merged: e2e stdio smoke tests, /collections,
+  .mcp.json; live MCP query from a real Claude Code session)
 - [x] **Phase 2** — Hybrid search (BM25 + dense + RRF) ✅ 2026-07-05 (pending
   merge). /search live in 3 modes w/ canonical relevance_score; OBS-006 ablation:
   hybrid ≥ dense everywhere, porter ascii kept; e2e tests on the real endpoint.
@@ -72,10 +74,12 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
 Books and sources to ingest as the system comes online:
 
 ### DevOps Domain
-- [ ] Docker Deep Dive (Poulton) — ingest first, drives 15 of 26 eval questions
-- [ ] A Developer's Essential Guide to Docker Compose (Gkatziouras, Packt 2023) —
-  dedicated Compose coverage; complements Docker Deep Dive for multi-service
-  application patterns, secrets, health checks, and scaling
+- [x] Docker Deep Dive (Poulton) — ✅ 2026-07-05 (Phase 1a): 311 chunks
+- [x] A Developer's Essential Guide to Docker Compose (Gkatziouras, Packt 2023) —
+  ✅ 2026-07-05: 272 chunks, corpus parity 583/583/583. Lesson: the pipeline's
+  DEFAULT_QUERY verify smoke test is written for Deep Dive, so stage 8 failed
+  until re-run with a Compose-specific `--query` (data was fine; verify-only).
+  For future ingests always pass a book-specific `--query`, or make it required.
 - [ ] Ansible for DevOps (Geerling) — **already owned**;
   the standard Ansible reference; ingest after Docker books are working
 - [ ] Ansible for Real-Life Automation (Madapparambath, Packt 2022) — **already owned**;
