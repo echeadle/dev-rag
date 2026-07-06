@@ -28,6 +28,11 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
 - [ ] **Phase 4b** — Grow eval question set to 25 with expected_source populated
 - [ ] **Phase 5** — Python domain
 - [ ] **Phase 5b** — Unified search_all ranking via reranker
+  - [ ] Review `search_all` result budget (found in MCP smoke test 2026-07-05):
+    the MCP fan-out fallback splits `n_results // 4` across domains
+    (`mcp/mcp_server.py`), so a request for 8 returns only 2 while devops is
+    the sole populated domain. Left as-is deliberately — the real fix is the
+    unified cross-domain endpoint (OBS-004 gate), not patching the fallback.
 - [ ] ~~**Phase 6** — Headroom compression~~ **REMOVED from the build path**
   (2026-07-04) — deferred to nice-to-have; see **Deferred** below.
   *(Phase numbers 7/8 left unchanged to stay aligned with
