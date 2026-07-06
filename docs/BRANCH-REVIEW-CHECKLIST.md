@@ -166,8 +166,9 @@ FBL-006 negatives failing honestly, not a bug in the harness.
 
 **What this review verifies.** This branch ingests the fourth book (Ansible
 for Real-Life Automation) into the devops corpus and re-baselines the eval.
-There is **no code change** — the only tracked edits are per-question notes in
-`devops_questions.yaml` and two new baseline JSONs; the corpus itself
+There is **no code change** — the tracked edits are per-question notes in
+`devops_questions.yaml`, two new baseline JSONs, and doc updates (CLAUDE.md,
+current_context.md, TODO.md, this checklist); the corpus itself
 (chunks/embeddings/ChromaDB/SQLite) is gitignored and lives in your local
 stores from the ingest run. So the review is about *data and measurement
 integrity*, not logic. Four things to check. First, **corpus parity**: the new
@@ -193,9 +194,13 @@ not the composite, for the reranker delta.
 ## Steps
 
 1. `git checkout feat/ingest-ansible-real-life`
-2. `git diff main --stat` — expect **one tracked file changed**
-   (`data/evaluation/devops_questions.yaml`, +12) plus two untracked baselines
-   under `eval/baselines/` (`*_hybrid_rrf_4books.json`, `*_reranker_c10_4books.json`).
+2. `git diff main --stat` — expect **7 files changed, no code**: the eval
+   notes (`data/evaluation/devops_questions.yaml`, +12), the two committed
+   baselines under `eval/baselines/` (`*_hybrid_rrf_4books.json`,
+   `*_reranker_c10_4books.json`, ~532 lines each), and four doc updates
+   (`CLAUDE.md`, `current_context.md`, `docs/TODO.md`, this checklist).
+   Anything under `src/`, `mcp/`, `tests/`, or `eval/*.py` in the stat is
+   unexpected — stop and ask why.
 3. `git diff main -- data/evaluation/devops_questions.yaml` — the 007 + 027
    note additions: read them against the claim that all three negatives still
    hold (incidental mentions only; the book's CI/CD chapter is Jenkins-based).
