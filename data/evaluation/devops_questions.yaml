@@ -625,3 +625,24 @@
   notes: >
     Verified: "multiple Compose files" in 4 Compose-book chunks (p144+);
     Deep Dive 0. Dev/prod file-combination is a Compose-book specialty.
+
+- id: devops-034
+  question: "How do you set up a multibranch pipeline in Jenkins to run Ansible automation?"
+  domain: devops
+  category: source_specific
+  failure_mode: provenance_failure
+  expected_source: "ansible-for-real-life-automation.pdf"
+  expected_chunk_contains:
+    - "multibranch"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Book-specific POSITIVE for Ansible-for-Real-life-Automation, added
+    2026-07-06 to close the eval's "added value" blind spot — the 4-book
+    ingest could only measure erosion, not what the new book contributed.
+    Verified: "multibranch" and "Jenkinsfile" are EXCLUSIVE to this book
+    (0 matching chunks in the other 3 books); ch12 "Integrating Ansible with
+    Your Tools" covers multibranch pipelines, the Jenkinsfile, and the
+    Ansible Tower plugin for Jenkins. Live RRF pre-check 2026-07-06: top-5
+    are all RLA, #1 chunk ansible-for-real-life-automation_0301 (p350).

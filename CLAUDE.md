@@ -63,9 +63,12 @@ Ingest tests never load real BGE-M3 — the model is always mocked.
   Corpus: 4 books, 1495 chunks (Deep Dive 311 + Compose guide 272 + Ansible
   for DevOps 499 + Ansible for Real-Life Automation 413, last ingested
   2026-07-06 on `feat/ingest-ansible-real-life`). Current RRF baseline is
-  `eval/baselines/2026-07-06_hybrid_rrf_4books.json` (R@1 84 / R@3 92 / MRR
-  89); the 4th book pushed R@3 off the ceiling and reopened the reranker
-  default — see the reranker A/B `_reranker_c10_4books.json` and ADR-012.
+  `eval/baselines/2026-07-06_hybrid_rrf_4books_37q.json` (37 questions incl.
+  devops-034, the first RLA positive; R@1 84.6 / R@3 92.3 / MRR 89.4) —
+  supersedes the 36q `_hybrid_rrf_4books.json`. The 4th book pushed R@3 off
+  the ceiling and reopened the reranker default — see the reranker A/B
+  `_reranker_c10_4books.json` (still 36q; refresh to 37q in the FBL-006 slice)
+  and ADR-012.
 - **Phase 3 (2026-07-06):** `reranker.py` real — bge-reranker-v2-m3 wired into
   hybrid mode with OBS-002 fallback, proven live. **Disabled by default**: on
   CPU it costs ~15 s/query @10 candidates (~112 s @50) vs ~0.15 s RRF-only.

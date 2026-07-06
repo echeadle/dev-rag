@@ -2,9 +2,8 @@
 _Last updated: 2026-07-06_
 
 ## Active Files
-data/books/ansible-for-real-life-automation.pdf (ingested), eval/baselines/,
-data/evaluation/devops_questions.yaml (007/027 notes), docs/TODO.md,
-docs/BRANCH-REVIEW-CHECKLIST.md
+data/evaluation/devops_questions.yaml (devops-034 added), tests/test_eval.py,
+eval/baselines/2026-07-06_hybrid_rrf_4books_37q.json, docs/TODO.md
 
 ## Current Step
 FOURTH BOOK ingested — `feat/ingest-ansible-real-life` MERGED to main
@@ -50,12 +49,32 @@ Ran the A/B (reranker vs RRF on the IDENTICAL 4-book corpus, candidates=10):
   RLA Podman-aside chunk — the 4th book handed the reranker a fresh
   near-miss to confidently mis-rank.
 
-## Next Action
-Ed reviews `feat/ingest-ansible-real-life` via the new
-docs/BRANCH-REVIEW-CHECKLIST.md section, then merges. THEN decide ADR-012
-(reranker default) with the reopen data in hand. Blind spot to close later
-(own baseline): no eval question targets the RLA book's unique content, so
-this eval could only measure erosion, not the value it added.
+## Slice C (DONE, on branch `feat/eval-rla-positive`, not yet merged)
+Closed the "added value" blind spot: added devops-034, the first eval
+positive that targets the RLA book's unique content.
+- Question: "How do you set up a multibranch pipeline in Jenkins to run
+  Ansible automation?" (ch12). Verified: "multibranch"/"Jenkinsfile" are
+  EXCLUSIVE to RLA (0 chunks in the other 3 books); live RRF pre-check top-5
+  all RLA. Scores 1.0/1.0/1.0/1.0 (R@1/R@3/MRR/chunk_match).
+- test_eval.py `real` set updated to include the RLA filename (the test
+  encoded the blind spot — it asserted expected_sources were only the two
+  Docker books). 139 tests green.
+- NEW OFFICIAL RRF BASELINE (37 questions):
+  `eval/baselines/2026-07-06_hybrid_rrf_4books_37q.json` — R@1 84.6, R@3 92.3,
+  MRR 89.4, composite 88.3. Supersedes `_hybrid_rrf_4books.json` (36q) as the
+  --compare target. The known erosion failures (devops-020, para-001b) persist.
+- The reranker baseline `_reranker_c10_4books.json` is now 36q and MISMATCHED
+  to the 37q RRF baseline. Deliberately NOT re-run here — slice A re-runs the
+  reranker anyway (FBL-006 gating), so the 37q reranker baseline is produced there.
+
+## Next Action — Slice A: FBL-006 negative gating
+Give the reranker a way to say "no answer / weak match" instead of confidently
+ranking a near-miss #1 for out-of-scope questions (Podman/Nomad/GitLab CI).
+Approach: calibrate a logit threshold on the 3 labelled negatives (maybe add a
+couple), so negative precision stops being 0%. This is the unblocker for the
+ADR-012 reranker-default decision. When A re-runs the reranker, do it on the
+37q set and save `_reranker_c10_4books_37q.json` (matched to the RRF 37q).
+Also still open: ADR-012 decision itself (Ed), reopen data in hand.
 
 ## Done When (fourth-book ingest) — status
 - [x] 413 chunks live, parity 1495; verify passed with book query
@@ -70,5 +89,6 @@ None. Parked: FBL-006 (now with fresh data), structure+enrich (FBL-004),
 GraphRAG P8, pgvector P7, headroom-ai.
 
 ## Phase
-Corpus building: 4 books / 1495 chunks live. Eval baseline current
-(RRF + reranker A/B). Reranker default decision reopened by measured headroom.
+Corpus building: 4 books / 1495 chunks live. Eval now has 37 questions incl.
+the first RLA positive (devops-034). Official RRF baseline = the 37q file.
+Next: slice A (FBL-006 gating) → then the ADR-012 reranker-default decision.
