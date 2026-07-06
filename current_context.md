@@ -7,8 +7,8 @@ data/evaluation/devops_questions.yaml (007/027 notes), docs/TODO.md,
 docs/BRANCH-REVIEW-CHECKLIST.md
 
 ## Current Step
-FOURTH BOOK ingested on branch `feat/ingest-ansible-real-life` (not yet
-merged — awaiting Ed's checklist review):
+FOURTH BOOK ingested — `feat/ingest-ansible-real-life` MERGED to main
+(287ba01) after Ed's checklist review + his own step-2 fix (0cf4944), pushed:
 - Ansible for Real-Life Automation (Madapparambath): 413 chunks -> corpus
   parity 1495/1495/1495. Screenshot-heavy Packt book (480 pages -> 413
   chunks, thinner text than page count). Stage-8 verify passed FIRST TRY
@@ -62,8 +62,8 @@ this eval could only measure erosion, not the value it added.
 - [x] Negatives re-verified post-ingest (read the hits); 007 + 027 notes updated
 - [x] 4-book RRF baseline saved + reranker A/B run + reranker baseline saved
 - [x] 139 tests green (no code changed — YAML notes + baselines only)
-- [ ] Branch-review section written + committed; Ed reviews + merges
-- [ ] ADR-012 reranker-default decision (Ed, post-merge)
+- [x] Branch-review section written; Ed reviewed + merged (287ba01) + pushed
+- [ ] ADR-012 reranker-default decision (Ed, next — the reopen data is in hand)
 
 ## Blockers
 None. Parked: FBL-006 (now with fresh data), structure+enrich (FBL-004),
