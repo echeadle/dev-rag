@@ -7,13 +7,16 @@ previous stage's data/ artifact, so any stage can be re-run alone.
 
 Usage:
     uv run python -m dev_rag.ingest.pipeline \
-        --source data/books/dockerdeepdive.pdf --domain devops
+        --source data/books/dockerdeepdive.pdf --domain devops \
+        --query "How does Docker isolate containers?"
 
 Flags:
     --start-stage N   resume from spec stage N (after inspection)
     --stop-stage N    stop after spec stage N (for inspection)
     --dry-run         run text stages only; skip load/verify (no store writes)
-    --query TEXT      verify-stage sample query
+    --query TEXT      verify-stage sample query — a question THIS book should
+                      answer; required whenever stage 8 runs (a shared default
+                      graded new books against the first book's content)
 """
 import argparse
 from dataclasses import dataclass, field
@@ -29,8 +32,6 @@ from .verify import verify_ingest
 STAGE_NUMBERS = (1, 2, 4, 6, 7, 8)   # spec numbering; 3 and 5 are Phase 1b
 STORE_STAGES = (7, 8)                # skipped by --dry-run
 
-DEFAULT_QUERY = "What is the production-safe way to store secrets in Docker?"
-
 
 @dataclass
 class PipelineConfig:
@@ -39,7 +40,7 @@ class PipelineConfig:
     start_stage: int = 1
     stop_stage: int = 8
     dry_run: bool = False
-    query: str = DEFAULT_QUERY
+    query: str = ""                  # required by stage 8; main() enforces
     data_dir: Path = Path("data")
     chroma_path: str = ""            # defaults from settings in run_pipeline
     sqlite_path: Path | None = None
@@ -136,18 +137,24 @@ def main() -> None:
     parser.add_argument("--stop-stage", type=int, default=8, choices=STAGE_NUMBERS)
     parser.add_argument("--dry-run", action="store_true",
                         help="skip load/verify — no ChromaDB/SQLite writes")
-    parser.add_argument("--query", default=DEFAULT_QUERY,
-                        help="verify-stage sample query")
+    parser.add_argument("--query", default=None,
+                        help="verify-stage sample query — a question THIS book "
+                             "should answer (required when stage 8 runs)")
     args = parser.parse_args()
 
-    run_pipeline(PipelineConfig(
+    cfg = PipelineConfig(
         source=args.source,
         domain=args.domain,
         start_stage=args.start_stage,
         stop_stage=args.stop_stage,
         dry_run=args.dry_run,
-        query=args.query,
-    ))
+        query=args.query or "",
+    )
+    if 8 in select_stages(cfg) and not args.query:
+        parser.error("--query is required when the verify stage (8) runs: "
+                     "pass a question this book should answer")
+
+    run_pipeline(cfg)
 
 
 if __name__ == "__main__":

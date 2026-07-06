@@ -36,10 +36,18 @@ Put the PDF in `data/books/`, then:
 ```bash
 uv run python -m dev_rag.ingest.pipeline \
     --source data/books/dockerdeepdive.pdf \
-    --domain devops
+    --domain devops \
+    --query "How does Docker isolate containers from each other?"
 ```
 
 Domains: `devops | travel | python | ai` (see `settings.py`).
+
+`--query` must be a question **this specific book** should answer — stage 8
+verifies the new book appears in the top-5 results for it. A question another
+book in the domain answers better fails verify even though the data loaded
+fine (this bit us on the Compose book, 2026-07-05 — the old shared default
+was a Deep Dive question). Required whenever stage 8 runs; `--dry-run` and
+`--stop-stage` runs that skip stage 8 don't need it.
 
 ### What happens, stage by stage
 
@@ -62,7 +70,7 @@ Spec stage numbers (3 and 5 are deferred LLM stages — not built yet):
 --stop-stage 2     # stop after clean, inspect data/cleaned/ before continuing
 --start-stage 7    # resume from load (reuses existing artifacts; embed not re-run)
 --dry-run          # stages 1-6 only; guaranteed no ChromaDB/SQLite writes
---query "..."      # custom verify-stage query (default: the Docker secrets question)
+--query "..."      # verify-stage query; required when stage 8 runs (see above)
 ```
 
 The gated workflow used in Phase 1a: run `--stop-stage N`, inspect the artifact,
@@ -81,7 +89,8 @@ Quick verify without re-running the pipeline:
 
 ```bash
 uv run python -m dev_rag.ingest.pipeline \
-    --source data/books/dockerdeepdive.pdf --domain devops --start-stage 8
+    --source data/books/dockerdeepdive.pdf --domain devops --start-stage 8 \
+    --query "How does Docker isolate containers from each other?"
 ```
 
 Expected output shape:

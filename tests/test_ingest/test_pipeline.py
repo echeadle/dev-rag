@@ -5,7 +5,9 @@ from pathlib import Path
 
 import fitz
 import numpy as np
+import pytest
 
+from dev_rag.ingest import pipeline
 from dev_rag.ingest.pipeline import PipelineConfig, run_pipeline, select_stages
 
 MIGRATIONS = Path(__file__).resolve().parents[2] / "migrations"
@@ -40,6 +42,24 @@ def test_select_stages_start_and_stop():
 
 def test_select_stages_dry_run_skips_store_stages():
     assert select_stages(cfg(dry_run=True)) == [1, 2, 4, 6]
+
+
+def test_main_requires_query_when_verify_runs(monkeypatch, capsys):
+    monkeypatch.setattr(
+        "sys.argv", ["pipeline", "--source", "x.pdf", "--domain", "devops"])
+    with pytest.raises(SystemExit):
+        pipeline.main()
+    assert "--query is required" in capsys.readouterr().err
+
+
+def test_main_skips_query_check_when_verify_wont_run(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(pipeline, "run_pipeline", lambda cfg: seen.update(cfg=cfg))
+    monkeypatch.setattr(
+        "sys.argv",
+        ["pipeline", "--source", "x.pdf", "--domain", "devops", "--dry-run"])
+    pipeline.main()
+    assert seen["cfg"].dry_run and seen["cfg"].query == ""
 
 
 def test_pipeline_end_to_end_on_tiny_pdf(tmp_path, monkeypatch, capsys):
