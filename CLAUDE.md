@@ -45,6 +45,16 @@ Ingest tests never load real BGE-M3 — the model is always mocked.
   (ADR-001…012). Don't reverse them without flagging a genuine, un-considered risk.
 - **Session close:** update `current_context.md` before ending a session (a Stop
   hook checks this).
+- **Branch close:** before the final commit on any feature branch, append that
+  branch's review section (context paragraphs + numbered steps with expected
+  outputs) to `docs/BRANCH-REVIEW-CHECKLIST.md` and add its index bullet at the
+  top of that file. A branch without its review section is not ready for Ed's
+  review or merge. This is how Ed learns what was done and verifies it himself
+  — never skip it because a change "seems small."
+- **Code straight to main:** a small isolated code fix committed directly to
+  main still gets a short entry (2–3 verify steps with expected output) in
+  `docs/BRANCH-REVIEW-CHECKLIST.md` under "Small Fixes Log", in the same
+  commit. Docs-only changes are exempt.
 
 ## Current state — ingest + hybrid search real (important context)
 **Implemented and proven:**

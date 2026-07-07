@@ -5,6 +5,16 @@ any branch; the live steps are adapted per phase — the pattern is always
 "run it in its default state, run it in its changed state, compare."
 A phase-specific section is added at each phase close.
 
+**Rule: write the review section BEFORE the branch's final commit.** Appending
+the branch's section here (context paragraphs + numbered steps with expected
+outputs, plus an index bullet below) is part of finishing the branch, not a
+follow-up — a branch without its section is not ready for review or merge.
+This applies to EVERY branch that writes code: the sections are how Ed learns
+what was done and verifies it independently. Small code fixes committed
+directly to main get a short entry (2–3 steps) in the "Small Fixes Log" at the
+bottom of this file, in the same commit. Docs-only changes are exempt.
+(Also stated in CLAUDE.md "Hard rules".)
+
 - **Phase 3 review** (feat/phase3-reranker): steps below, live off/on curl A/B.
 - **Phase 4 review** (feat/phase4-eval): see "Phase 4 — Eval Harness Review"
   at the bottom of this file.
@@ -328,3 +338,13 @@ R@1/R@3/MRR/chunk_match with top-1 `ansible-for-real-life-automation.pdf`. The
    ```
    Note: the reranker baseline is still 36q and is intentionally refreshed to
    37q in the next slice (FBL-006), not here.
+
+---
+
+# Small Fixes Log
+
+Short verify entries for code fixes committed directly to main (no feature
+branch). Newest first. Format: date, commit, one line on what changed, 2–3
+numbered steps with expected output.
+
+*(none yet)*
