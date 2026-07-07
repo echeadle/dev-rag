@@ -49,7 +49,7 @@ Ran the A/B (reranker vs RRF on the IDENTICAL 4-book corpus, candidates=10):
   RLA Podman-aside chunk — the 4th book handed the reranker a fresh
   near-miss to confidently mis-rank.
 
-## Slice C (DONE, on branch `feat/eval-rla-positive`, not yet merged)
+## Slice C (DONE — MERGED to main 7e6c5f3)
 Closed the "added value" blind spot: added devops-034, the first eval
 positive that targets the RLA book's unique content.
 - Question: "How do you set up a multibranch pipeline in Jenkins to run
@@ -67,14 +67,47 @@ positive that targets the RLA book's unique content.
   to the 37q RRF baseline. Deliberately NOT re-run here — slice A re-runs the
   reranker anyway (FBL-006 gating), so the 37q reranker baseline is produced there.
 
-## Next Action — Slice A: FBL-006 negative gating
-Give the reranker a way to say "no answer / weak match" instead of confidently
-ranking a near-miss #1 for out-of-scope questions (Podman/Nomad/GitLab CI).
-Approach: calibrate a logit threshold on the 3 labelled negatives (maybe add a
-couple), so negative precision stops being 0%. This is the unblocker for the
-ADR-012 reranker-default decision. When A re-runs the reranker, do it on the
-37q set and save `_reranker_c10_4books_37q.json` (matched to the RRF 37q).
-Also still open: ADR-012 decision itself (Ed), reopen data in hand.
+## Next Action — Slice A: FBL-006 negative gating (PLAN — execute on a branch)
+Goal: let the reranker say "no confident answer / weak match" instead of
+ranking a near-miss #1 for out-of-scope questions (Podman/Nomad/GitLab CI),
+so negative precision stops being 0%. This is the unblocker for the ADR-012
+reranker-default decision. FIRST create branch `feat/fbl006-negative-gating`.
+
+Core risk that shapes the plan: in reranker mode `relevance_score` IS the
+cross-encoder logit, and these near-misses get POSITIVE logits (the reranker
+sees "Podman" in the RLA aside and thinks it's relevant). The reranker may
+simply not separate near-miss negatives from real answers by logit magnitude.
+So LEAD WITH DIAGNOSIS, not implementation.
+
+- **A0 Diagnose (read-only, GO/NO-GO). Do first.** Reranker server up
+  (RERANKER_ENABLED=true RERANKER_CANDIDATES=10). Query the 3 negatives
+  (devops-007/018/027) + ~10 positives; record top-1 relevance_score (=logit)
+  for each. Decision: is there a threshold T with the 3 negatives below and
+  positives above, and at what cost in wrongly-rejected positives?
+    - Clean separation -> gate path (A1-gate).
+    - Overlap -> threshold is the wrong tool -> pivot (A1-pivot).
+- **A1-gate:** add a settings threshold (e.g. RERANKER_MIN_LOGIT; default =
+  current behavior, nothing changes unless enabled). Apply in the
+  retrieval/API layer so REAL responses are flagged/withheld as weak — NOT
+  only in eval/scorer.py (moving just the scorer threshold games the metric).
+- **A1-pivot (if not separable):** surface a "weak match" confidence flag in
+  the API/MCP response instead of hard-dropping, OR document FBL-006 as a
+  real reranker limitation. Either is an honest finding that directly informs
+  the ADR-012 decision (confident hallucination on out-of-scope = a real cost
+  against default-ON).
+- **A2 Validate + baseline:** re-run reranker eval on the 37q set with the
+  gate — negatives rejected (neg precision up) WITHOUT dropping positives
+  (R@1/R@3 must hold; that's the guardrail). Save
+  `_reranker_c10_4books_37q.json` (the matched 37q reranker baseline C
+  deferred). Update ADR-012 data + docs + a BRANCH-REVIEW-CHECKLIST section.
+
+Guardrails: default OFF / unchanged unless enabled; don't overfit T to 3
+negatives (flag small-n; consider adding 1-2 labelled negatives in A0); never
+move the eval threshold in isolation. Consider a Plan-agent pass on A2's
+implementation once A0 says the gate is viable.
+
+Still open regardless: ADR-012 decision itself (Ed) — reopen data in hand
+(R@3 +8 with reranker), latency ~100x. FBL-006 result feeds this.
 
 ## Done When (fourth-book ingest) — status
 - [x] 413 chunks live, parity 1495; verify passed with book query
