@@ -24,9 +24,9 @@ FTS5, BGE-M3 embeddings, bge-reranker-v2-m3, NetworkX, Docker Compose, MCP serve
   uv sync                  # resolves cleanly
   ```
 
-## Tests — the full suite is 139 (as of Phase 4 close, 2026-07-06)
+## Tests — the full suite is 143 (as of Slice A / FBL-006 close, 2026-07-06)
 ```
-uv run pytest              # expect 139 passed (113 in tests/ + 26 in mcp/tests/)
+uv run pytest              # expect 143 passed (116 in tests/ + 27 in mcp/tests/)
 ```
 The `mcp/tests/` include the fixtures/consumer-alignment tests guarding the two
 High review findings (OBS-001/002). **If a bare run reports only the `tests/`
@@ -72,13 +72,12 @@ Ingest tests never load real BGE-M3 — the model is always mocked.
   `.mcp.json` registers it for Claude Code sessions; `/collections` real counts.
   Corpus: 4 books, 1495 chunks (Deep Dive 311 + Compose guide 272 + Ansible
   for DevOps 499 + Ansible for Real-Life Automation 413, last ingested
-  2026-07-06 on `feat/ingest-ansible-real-life`). Current RRF baseline is
-  `eval/baselines/2026-07-06_hybrid_rrf_4books_37q.json` (37 questions incl.
-  devops-034, the first RLA positive; R@1 84.6 / R@3 92.3 / MRR 89.4) —
-  supersedes the 36q `_hybrid_rrf_4books.json`. The 4th book pushed R@3 off
-  the ceiling and reopened the reranker default — see the reranker A/B
-  `_reranker_c10_4books.json` (still 36q; refresh to 37q in the FBL-006 slice)
-  and ADR-012.
+  2026-07-06 on `feat/ingest-ansible-real-life`). Current official RRF baseline
+  is `eval/baselines/2026-07-06_hybrid_rrf_4books_39q.json` (39 questions, 5
+  negatives; R@1 84.6 / R@3 92.3 / MRR 89.4) — supersedes the 37q file (Slice A
+  added devops-035/036). The 4th book pushed R@3 off the ceiling and reopened
+  the reranker default; the matched gated reranker baseline is
+  `_reranker_c10_4books_39q.json` — see ADR-012 and the FBL-006 Slice A note below.
 - **Phase 3 (2026-07-06):** `reranker.py` real — bge-reranker-v2-m3 wired into
   hybrid mode with OBS-002 fallback, proven live. **Disabled by default**: on
   CPU it costs ~15 s/query @10 candidates (~112 s @50) vs ~0.15 s RRF-only.
@@ -89,10 +88,20 @@ Ingest tests never load real BGE-M3 — the model is always mocked.
   resolved — 36 devops questions, 25 with expected_source VERIFIED against
   chunk text). Official baseline `eval/baselines/2026-07-06_hybrid_rrf.json`:
   R@1 92 / R@3 100 / MRR 95.3 / composite 94.1. Reranker A/B: R@3 delta 0 →
-  default stays OFF (ADR-012 measured table). Open finding FBL-006: reranker
-  logits don't reject near-domain negatives (negative precision 0%).
-  **When adding eval questions, verify expected_source against
-  data/chunks/*.json — never guess from titles.** Runbook §5c.
+  default stays OFF (ADR-012 measured table). **When adding eval questions,
+  verify expected_source against data/chunks/*.json — never guess from
+  titles.** Runbook §5c.
+- **Slice A / FBL-006 (2026-07-06):** the reranker's "0% negative precision"
+  was a **units bug** — `CrossEncoder.predict()` returns a sigmoid probability
+  in (0,1) but the scorer gated with `reranker_score < 0.0` (logit space), so
+  it could never fire. Fixed with a settings-driven `weak_match` flag
+  (`settings.reranker_min_score`, default 0.5; API + MCP surface it, scorer
+  reads it — a SOFT flag, ranking/R@k unchanged). Eval grew to **39q / 5
+  negatives** (added devops-035 Istio, devops-036 Pulumi, grep-verified
+  absent). Matched 39q baselines `_hybrid_rrf_4books_39q.json` /
+  `_reranker_c10_4books_39q.json`: gated reranker gives neg precision 0→80%
+  (4/5) with R@1 96.2 / R@3 100. Residual leak devops-027 (GitLab CI). The
+  ADR-012 reranker-default decision is still Ed's (reopen data + latency).
 
 These are still stubs, not working code:
 - `graph.py`, `agent.py` (unwired — nothing imports it), `mcp/compress.py`

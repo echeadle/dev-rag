@@ -646,3 +646,51 @@
     Your Tools" covers multibranch pipelines, the Jenkinsfile, and the
     Ansible Tower plugin for Jenkins. Live RRF pre-check 2026-07-06: top-5
     are all RLA, #1 chunk ansible-for-real-life-automation_0301 (p350).
+
+# ---------------------------------------------------------------------------
+# NEGATIVE / NO-ANSWER — added in Slice A (FBL-006, 2026-07-06)
+# Grow the negative sample from 3 → 5 so negative-precision isn't measured on
+# n=3. Both are grep-verified ABSENT (0 occurrences of the tech name across
+# all 4 books' chunk artifacts) — a stronger absence proof than the original
+# three (Podman 4, GitLab 9, Nomad 1 incidental mentions). devops-035 is
+# cleanly orthogonal (no near-miss bait); devops-036 is a deliberate
+# NEAR-DOMAIN negative (Pulumi vs the Terraform content the corpus DOES have)
+# to probe the same leak mechanism as devops-027 (GitLab CI vs Jenkins).
+# ---------------------------------------------------------------------------
+
+- id: devops-035
+  question: "How do you configure an Istio service mesh for traffic routing and mutual TLS between services?"
+  domain: devops
+  category: negative
+  failure_mode: hallucination_via_retrieval
+  expected_source: null
+  expected_chunk_contains: []
+  no_answer: true
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Negative test — Istio / service mesh is not covered. Grep-verified
+    2026-07-06: 0 occurrences of "istio" across all 4 books' chunk artifacts
+    (data/chunks/*.json). Service mesh is orthogonal to the Docker/Ansible
+    corpus, so there is no near-miss bait — this is the CLEANLY out-of-scope
+    control negative for FBL-006 (contrast devops-036, a Terraform near-miss).
+
+- id: devops-036
+  question: "How do you use Pulumi with Python to provision AWS infrastructure as code?"
+  domain: devops
+  category: negative
+  failure_mode: hallucination_via_retrieval
+  expected_source: null
+  expected_chunk_contains: []
+  no_answer: true
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    Negative test — Pulumi is not covered. Grep-verified 2026-07-06: 0
+    occurrences of "pulumi" across all 4 books' chunk artifacts. BUT this is
+    a NEAR-DOMAIN negative by design: Pulumi is a Terraform competitor and
+    the corpus DOES cover Terraform (146 mentions; Compose ch12 provisions
+    ECS/ECR with Terraform). So it tests whether the reranker rates the
+    Terraform/IaC chunks as answering a Pulumi query — the same
+    hallucination-via-retrieval mechanism as devops-027 (GitLab CI vs the
+    Jenkins chapter). Added in Slice A for FBL-006.

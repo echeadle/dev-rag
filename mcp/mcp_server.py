@@ -94,6 +94,10 @@ def _format_results(results: list[dict], include_score: bool = True) -> str:
             header += f"  `{domain}`"
         if include_score and score is not None:
             header += f"  (score: {score:.3f})"
+        # FBL-006: surface the reranker's low-confidence flag so the caller
+        # knows the corpus may not actually answer this (out-of-scope query).
+        if r.get("weak_match") is True:
+            header += "  ⚠️ weak match"
 
         parts.append(f"{header}\n\n{content.strip()}")
 

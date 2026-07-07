@@ -175,6 +175,13 @@ Notes:
   server doesn't answer until "Reranker loaded" appears in the log.
 - Fallback is graceful (OBS-002): if the model is missing or scoring
   fails, hybrid answers in RRF order with `reranker_score: null`.
+- **FBL-006 confidence gate:** the reranker's score is a SIGMOID probability
+  in (0,1). A hit below `RERANKER_MIN_SCORE` (default 0.5) is flagged
+  `weak_match: true` in the /search response and annotated "⚠️ weak match"
+  in the MCP output — a SOFT signal, ranking/R@k unchanged. Tune per-run,
+  e.g. `RERANKER_MIN_SCORE=0.6`. `weak_match: null` means the reranker
+  didn't run (confidence unknowable). Measured 2026-07-06 (5 negatives): at
+  0.5, 4/5 out-of-scope queries flag weak; only devops-027 (GitLab CI) leaks.
 - Revisit the default when Phase 4 eval quantifies the accuracy delta.
 
 ## 5c. Run the evaluation harness (Phase 4)

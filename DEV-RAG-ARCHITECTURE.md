@@ -478,11 +478,66 @@ Baselines: `eval/baselines/2026-07-06_hybrid_rrf.json` / `_reranker_c10.json`.
 implemented for per-run use (`RERANKER_ENABLED=true`) and the question
 re-opens when the corpus grows enough for R@3 headroom to exist.
 
-**New finding (FBL-006):** the hoped-for negative gating (logit < 0 rejects
-out-of-corpus queries) does NOT hold — all 3 negatives (Podman/Nomad/GitLab)
-got confidently positive logits on near-miss content; negative precision 0%.
-Composite scores are NOT comparable across the two runs (negatives only
-computable in the reranker run). Tracked in docs/TODO.md.
+**FBL-006 (superseded by Slice A, 2026-07-06):** the original 2-book run read
+negative precision as 0% and concluded the reranker "does NOT reject
+out-of-corpus queries." **That was largely a units artifact, not a blind
+reranker** — though one genuine near-domain limitation does remain (GitLab CI,
+below). `CrossEncoder.predict()` for bge-reranker-v2-m3 returns a
+SIGMOID probability in (0,1), but the scorer gated negatives with
+`reranker_score < 0.0` (a raw-logit cutoff). A probability can never be < 0,
+so the negative branch could never fire — 0% was mechanically forced. (The
+sibling dense branch already used the correct `< 0.5` for its [0,1] cosine
+score; the reranker branch was the odd one out.) See the Slice A measured
+block below for the corrected picture.
+
+**Slice A — FBL-006 confidence gate (2026-07-06, 4 books / 1495 chunks, 39
+devops questions incl. 5 labelled negatives, reranker @ 10 candidates on CPU):**
+
+The fix is a settings-driven `weak_match` flag: when the reranker ran, any hit
+scoring below `settings.reranker_min_score` (default 0.5 = sigmoid midpoint =
+logit 0) is flagged low-confidence. It is a SOFT signal, not a drop — ranking
+and R@k are unchanged by construction; the API/MCP surface the flag and the
+eval scorer reads it (so the metric measures the gate that actually ships).
+
+| Metric | hybrid RRF (39q) | + reranker, gated (39q) | delta |
+|---|---|---|---|
+| Retrieval@1 | 84.6% | 96.2% | **+11.5** |
+| Retrieval@3 | 92.3% | 100% | **+7.7** |
+| MRR | 89.4% | 98.1% | +8.7 |
+| Chunk match | 81.5% | 92.6% | +11.1 |
+| Negative precision | n/a (FBL-005: RRF has no relevance scale) | **80.0%** (4/5) | — |
+| Composite | 88.3% | 94.7% | +6.4 |
+| Latency/query (warm) | ~0.15 s | ~15–20 s | ~100× |
+
+Baselines: `eval/baselines/2026-07-06_hybrid_rrf_4books_39q.json` /
+`_reranker_c10_4books_39q.json`. **Read the per-metric deltas as the rigorous
+comparison — they are all clean and all up.** Composite (88.3→94.7) is only
+DIRECTIONAL: the two runs weight the negative term differently (RRF excludes
+it → normalized over 0.85; the reranker includes neg=0.80 → over 1.0), so they
+aren't the same construct. It does dispel the earlier "composite fell to 82.6"
+scare — that drop was purely the 0% units artifact — but don't read +6.4 as a
+precise gain (a neg-excluded reranker composite would be ~97.3; the 0.80 neg
+term actually taxes the reported figure).
+
+**Guardrail shown, not asserted:** the gated retrieval numbers (R@1 96.2 /
+R@3 100 / MRR 98.1 / CM 92.6) are essentially identical to the pre-gate
+reranker run (96 / 100 / 98 / 92.3) — empirical proof the flag left ranking
+untouched, exactly as a flag-not-drop design predicts.
+
+**Residual limitation (feeds the default decision):** 1 of 5 negatives still
+leaks — `devops-027` (GitLab CI), scored 0.655. The reranker cleanly rejects
+orthogonal queries (Istio 0.010, Nomad 0.008) and even the Pulumi/Terraform
+near-miss (0.317), but GitLab CI outscores 3 real positives because the corpus
+carries an entire Jenkins CI/CD chapter as bait. Pushing the gate above 0.655
+to catch it would false-reject those positives, so 0.5 is held on principle
+and the leak is reported, not tuned away. False-flag cost at 0.5: 2/10 sampled
+positives (multi-stage 0.301, healthcheck 0.451) get flagged weak but are still
+returned (R@k intact).
+
+**Reranker default remains Ed's open call (ADR unchanged).** The reopen data:
+R@3 +7.7 (real headroom now that the 4th book pushed RRF off the ceiling) and
+80% negative precision, weighed against ~100× latency and the one confident
+near-domain leak. Recorded, not flipped. Tracked in docs/TODO.md.
 
 ---
 
