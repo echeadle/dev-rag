@@ -134,10 +134,13 @@ section (p269) from a direct ChromaDB query. ✓
 *The former Phase 1a stages 3 and 5. NOT the same thing as "Phase 1b" below
 (MCP wiring) — the phase1a plan's "defer to 1b" phrasing meant this section.
 Schedule deliberately: after the eval baseline (Phase 4) can measure whether
-enrichment earns its cost, and gated on the FBL-004 cost estimate
-(311 chunks/book × per-chunk Claude calls).*
+enrichment earns its cost, and gated on the FBL-004 cost estimate.*
 
-- [ ] FBL-004 cost estimate first — do not start without it
+- [x] FBL-004 cost estimate ✅ 2026-07-08 — real corpus (1495 chunks, 4 books):
+      ~$12.56 sync / ~$6.28 via Batch API for a full enrichment pass (worst
+      case ~$26/~$13). Cost is a non-issue at this scale — the cost gate is
+      cleared. See docs/TODO.md for the full breakdown. Whether to actually
+      start this section is still a separate scope decision, Ed's to make.
 - [ ] Implement `structure.py` — chapter/section detection; try **regex over
       pymupdf4llm's markdown `##` headings first** (may need no LLM at all)
 - [ ] Implement semantic chunking at section boundaries (spec Stage 4 proper)

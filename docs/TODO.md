@@ -83,8 +83,19 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
   IMPLEMENTATION-ORDER.md Phase 1a marked complete with deferred structure+enrich
   split into its own unambiguous section; phase1a plan's chunks-column list
   corrected to match migrations/001.
-- [ ] **FBL-004** — estimate Stage 5 enrichment API cost from Phase 1a's real chunk
-  count before green-lighting Phase 1b (per-chunk Claude calls × corpus size).
+- [x] **FBL-004** — ✅ 2026-07-08. Estimated Stage 5 enrichment API cost against
+  the real corpus (1495 chunks, 4 books — not the 311/book placeholder in the
+  spec's original comment). Per call: ~800 input tokens (1491-char avg content
+  + fixed prompt/schema template) and ~400 output tokens average (1000 cap
+  worst case). At Sonnet-tier pricing: **~$12.56 sync / ~$6.28 via Batch API**
+  for average output, **~$26/~$13 worst case** if every call hit the
+  `max_tokens` cap. **Conclusion: cost is a non-issue at this corpus scale** —
+  the gate that blocked Phase 1b is cleared. (Back-of-envelope, no live
+  `count_tokens` call — no API credentials configured in this environment —
+  but the "cheap" conclusion holds even at 2x the estimate.) Note: the spec's
+  `model="claude-sonnet-4-6"` should be revisited against the then-current
+  recommended model whenever Phase 1b is actually implemented. Whether to
+  actually greenlight Phase 1b is a separate scope decision, still Ed's.
 - [x] **FBL-005** — ✅ 2026-07-06 (Phase 4): negative precision is mode-aware —
   reranker logit < 0, dense cosine < 0.5, and **None (n/a) under plain RRF**
   since RRF encodes rank, not relevance. Reporter says so explicitly.
