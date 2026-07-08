@@ -47,6 +47,15 @@ class FakeCrossEncoder:
         return [9.0 if "Bridge" in doc else 1.0 for _, doc in pairs]
 
 
+class LowConfidenceCrossEncoder:
+    """Every pair scores below the default gate (0.5) — mimics the
+    out-of-scope negative case (FBL-006): the reranker ran but is not
+    confident about any candidate."""
+
+    def predict(self, pairs, **kwargs):
+        return [0.2 for _ in pairs]
+
+
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     chunks = [
@@ -132,7 +141,30 @@ def test_hybrid_reranker_end_to_end(client, monkeypatch):
     # OBS-001: canonical field carries the reranker score when it ran
     assert top["relevance_score"] == pytest.approx(9.0)
     assert top["rrf_score"] is not None          # Stage 1 debug preserved
+    # FBL-006: 9.0 ≥ gate (0.5) → confident, not flagged
+    assert top["weak_match"] is False
     assert data["reranker"] == settings.reranker_model
+
+
+def test_hybrid_reranker_weak_match_flag(client, monkeypatch):
+    """FBL-006: when the reranker ran but scored below reranker_min_score,
+    the result is flagged weak_match=True — a soft signal, ranking unchanged."""
+    monkeypatch.setattr(settings, "reranker_enabled", True)
+    monkeypatch.setattr(reranker, "_reranker", LowConfidenceCrossEncoder())
+    data = search(client, search_mode="hybrid")
+    for r in data["results"]:
+        assert r["reranker_score"] == pytest.approx(0.2)
+        assert r["weak_match"] is True            # 0.2 < 0.5 gate
+
+
+def test_weak_match_gate_is_settings_driven(client, monkeypatch):
+    """The gate reads settings.reranker_min_score — lower it below the score
+    and the same 0.2 hit is no longer flagged."""
+    monkeypatch.setattr(settings, "reranker_enabled", True)
+    monkeypatch.setattr(settings, "reranker_min_score", 0.1)
+    monkeypatch.setattr(reranker, "_reranker", LowConfidenceCrossEncoder())
+    data = search(client, search_mode="hybrid")
+    assert all(r["weak_match"] is False for r in data["results"])  # 0.2 ≥ 0.1
 
 
 def test_hybrid_reranker_fallback_when_model_missing(client, monkeypatch):
@@ -144,6 +176,8 @@ def test_hybrid_reranker_fallback_when_model_missing(client, monkeypatch):
     assert top["chunk_id"] == "tiny_0001"        # RRF order preserved
     assert top["reranker_score"] is None
     assert top["relevance_score"] == pytest.approx(top["rrf_score"])
+    # FBL-006: reranker didn't run → confidence unknowable, not a fake pass
+    assert top["weak_match"] is None
 
 
 def test_collections_report_real_chroma_counts(client):

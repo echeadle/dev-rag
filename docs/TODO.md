@@ -88,39 +88,48 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
 - [x] **FBL-005** — ✅ 2026-07-06 (Phase 4): negative precision is mode-aware —
   reranker logit < 0, dense cosine < 0.5, and **None (n/a) under plain RRF**
   since RRF encodes rank, not relevance. Reporter says so explicitly.
-- [ ] **FBL-006** — reranker logits do NOT reject near-domain negatives: all 3
-  no_answer questions (Podman/Nomad/GitLab CI) drew confidently positive logits
-  on near-miss content → negative precision 0% in the reranker A/B
-  (2026-07-06). The corpus answers out-of-scope questions with lookalike
-  content and no layer currently gates it. Ideas when picked up: calibrate a
-  higher logit threshold on a labelled negative set; or surface "weak match"
-  warnings in the MCP layer. Note: composite scores are not comparable between
-  runs whose negative metric differs in computability.
-  **New data 2026-07-06 (4-book reranker A/B):** still negative precision 0% /
-  hallucination 100% — but now with a concrete mechanism. devops-007's
-  reranker top-1 is the RLA book's Podman-*aside* chunk ("if you use Podman,
-  see containers.podman"): the 4th book handed the reranker a fresh
-  near-miss to confidently mis-rank. Ingesting more books makes this worse,
-  not better, until a gating layer exists.
+- [x] **FBL-006** — ✅ 2026-07-06 (Slice A, `feat/fbl006-negative-gating`).
+  **Root cause was a units bug, not a blind reranker.** `CrossEncoder.predict()`
+  returns a SIGMOID probability in (0,1); the scorer gated negatives with
+  `reranker_score < 0.0` (a raw-logit cutoff), which a probability can never
+  satisfy → 0% was mechanically forced, not measured. (The dense branch already
+  used the correct `< 0.5`.) **Fix:** a settings-driven `weak_match` flag —
+  when the reranker ran, a hit below `settings.reranker_min_score` (default 0.5
+  = sigmoid midpoint = logit 0) is flagged low-confidence. It is a SOFT signal,
+  not a drop: ranking/R@k unchanged by construction; the API + MCP surface the
+  flag and eval/scorer.py reads it (measures the gate that ships, not a scorer
+  knob). Grew the negative set 3→5 (added devops-035 Istio orthogonal control,
+  devops-036 Pulumi near-domain, both grep-verified absent). **Result (39q,
+  gated, `_reranker_c10_4books_39q.json`):** negative precision 0→80% (4/5),
+  R@1 96.2 / R@3 100 held. **Residual:** devops-027 (GitLab CI, 0.655) still
+  leaks — the corpus's whole Jenkins chapter makes it a genuine near-domain
+  hit that outscores 3 real positives; 0.5 is held on principle rather than
+  tuned past it. This residual + ~100× latency feed the still-open ADR-012
+  default decision.
 
-### Reranker default (ADR-012) — REOPENED 2026-07-06 by measured headroom
+### Reranker default (ADR-012) — REOPENED 2026-07-06, decision still Ed's
 - The 4th book pushed RRF R@3 off the ceiling (100→92), creating the first
-  real reranker headroom. Reranker A/B on the identical 4-book corpus
-  (candidates=10, `2026-07-06_reranker_c10_4books.json` vs
-  `2026-07-06_hybrid_rrf_4books.json`): **R@1 84→96 (+12), R@3 92→100 (+8),
-  MRR 89→98 (+9)**, chunk_match 80.8→92.3, paraphrase 0→100. The reranker
-  recovers exactly the cross-book erosion.
-- ADR-012's own reopen criterion (flip when R@3 delta ≥ +3) is now met (+8),
+  real reranker headroom. **Matched 39q A/B (candidates=10, gated,
+  `_reranker_c10_4books_39q.json` vs `_hybrid_rrf_4books_39q.json`):**
+  **R@1 84.6→96.2 (+11.5), R@3 92.3→100 (+7.7), MRR 89.4→98.1 (+8.7)**,
+  chunk_match 81.5→92.6, composite 88.3→94.7. The reranker recovers exactly
+  the cross-book erosion.
+- ADR-012's own reopen criterion (flip when R@3 delta ≥ +3) is met (+7.7),
   where the earlier same-candidates A/B saw R@3 delta 0. **Insight: reranker
   value is corpus-dependent** — headroom appeared only once cross-book
   competition did, not from any config change.
-- BUT latency is unchanged (~100×, ~21 s/query @10 on CPU), and FBL-006
-  (negatives) is now the visible failure mode. So the *tradeoff* genuinely
-  reopens; it is NOT automatically "turn it ON." **Decision is Ed's** (ADRs
-  are final) — recorded here, ADR-012 decision line left OFF pending review.
-  Composite (87.8→82.6) is NOT the metric to read here: it fell only because
-  neg-precision/hallucination went n/a→computable (see FBL-006 note); every
-  comparable retrieval metric improved.
+- **FBL-006 is now RESOLVED as a metric bug** (see above): with the sigmoid
+  gate, negative precision is 0→80% (4/5). Read the per-metric deltas as the
+  rigorous comparison (all clean, all up). Composite (88.3→94.7) is only
+  DIRECTIONAL — the runs weight the negative term differently (RRF excludes it,
+  the reranker includes neg=0.80), so it's not the same construct; it does
+  dispel the earlier "82.6" scare (purely the 0% artifact) but isn't a precise
+  gain.
+- What still weighs against default-ON: ~100× latency (~15–20 s/query @10 on
+  CPU) and the ONE residual leak (devops-027 GitLab CI, a confident
+  near-domain hallucination the Jenkins chapter feeds). So the *tradeoff*
+  genuinely reopens; it is NOT automatically "turn it ON." **Decision is Ed's**
+  (ADRs are final) — recorded here, ADR-012 decision line left OFF pending review.
 
 ---
 

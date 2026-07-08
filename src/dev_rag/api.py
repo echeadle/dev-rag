@@ -10,6 +10,9 @@ PER-MODE and not comparable across modes:
   dense  → cosine similarity  (0-1)
   sparse → negated BM25       (unbounded positive)
 `rrf_score`/`reranker_score`/`dense_rank`/`sparse_rank` are debug fields.
+`weak_match` (FBL-006) flags a low-confidence hit when the reranker ran and
+scored it below settings.reranker_min_score; None means the reranker did not
+run, so confidence is unknowable (RRF encodes rank, not relevance).
 
 The BGE-M3 query embedder loads lazily on the FIRST search (~10 s CPU);
 the reranker loads EAGERLY at startup via lifespan when enabled
@@ -92,6 +95,10 @@ class SearchResult(BaseModel):
     relevance_score: float          # OBS-001: single canonical field for all callers
     rrf_score: float | None = None  # preserved for debugging — not for consumers
     reranker_score: float | None = None  # debug; None = reranker didn't run
+    # FBL-006: True when the reranker ran AND scored this result below
+    # settings.reranker_min_score (low-confidence). None = reranker didn't run,
+    # so confidence can't be judged (RRF encodes rank, not relevance).
+    weak_match: bool | None = None
     dense_rank: int | None = None
     sparse_rank: int | None = None
 
@@ -209,6 +216,10 @@ async def search(request: SearchRequest) -> dict:
                 if r.reranker_score is not None else r.rrf_score,
                 rrf_score=r.rrf_score,
                 reranker_score=r.reranker_score,
+                # FBL-006: flag low-confidence hits (sigmoid score below the
+                # gate). None on any fallback path where the reranker didn't run.
+                weak_match=(r.reranker_score < settings.reranker_min_score)
+                if r.reranker_score is not None else None,
                 dense_rank=r.dense_rank,
                 sparse_rank=r.sparse_rank,
             )

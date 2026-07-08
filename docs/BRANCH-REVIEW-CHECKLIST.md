@@ -5,6 +5,16 @@ any branch; the live steps are adapted per phase — the pattern is always
 "run it in its default state, run it in its changed state, compare."
 A phase-specific section is added at each phase close.
 
+**Rule: write the review section BEFORE the branch's final commit.** Appending
+the branch's section here (context paragraphs + numbered steps with expected
+outputs, plus an index bullet below) is part of finishing the branch, not a
+follow-up — a branch without its section is not ready for review or merge.
+This applies to EVERY branch that writes code: the sections are how Ed learns
+what was done and verifies it independently. Small code fixes committed
+directly to main get a short entry (2–3 steps) in the "Small Fixes Log" at the
+bottom of this file, in the same commit. Docs-only changes are exempt.
+(Also stated in CLAUDE.md "Hard rules".)
+
 - **Phase 3 review** (feat/phase3-reranker): steps below, live off/on curl A/B.
 - **Phase 4 review** (feat/phase4-eval): see "Phase 4 — Eval Harness Review"
   at the bottom of this file.
@@ -328,3 +338,99 @@ R@1/R@3/MRR/chunk_match with top-1 `ansible-for-real-life-automation.pdf`. The
    ```
    Note: the reranker baseline is still 36q and is intentionally refreshed to
    37q in the next slice (FBL-006), not here.
+
+---
+
+# Slice A — FBL-006 Negative Gating (feat/fbl006-negative-gating)
+
+**What this review verifies.** FBL-006 was recorded as "the reranker gives 0%
+negative precision — it can't reject out-of-scope queries." A0 diagnosis
+overturned that: the 0% was a **units bug**, not a blind model.
+`CrossEncoder.predict()` for bge-reranker-v2-m3 returns a **sigmoid
+probability in (0,1)**, but `eval/scorer.py` gated negatives with
+`reranker_score < 0.0` — a raw-logit cutoff a probability can never satisfy,
+so the negative branch could never fire. (The sibling dense branch already
+used the correct `< 0.5`.) The fix is a settings-driven **`weak_match`** flag:
+when the reranker ran, a hit below `settings.reranker_min_score` (default 0.5 =
+sigmoid midpoint = logit 0) is flagged low-confidence. It is a **soft flag,
+not a drop** — ranking and R@k are unchanged by construction; the API and MCP
+surface the flag and the eval scorer reads it (so the metric measures the gate
+that ships, not a scorer-local knob). The eval set grew 37→39q with two
+grep-verified-absent negatives (devops-035 Istio, devops-036 Pulumi).
+
+**What "pass" looks like.** 143 green. The matched 39q A/B: RRF gives
+R@1 84.6 / R@3 92.3 / negative precision n/a; the gated reranker gives
+R@1 96.2 / R@3 100 / MRR 98.1 / **negative precision 80% (4/5)**. Read the
+per-metric deltas as the real comparison; composite (88.3→94.7) is only
+directional (the runs weight the negative term differently). The gate is a
+flag, not a drop, so ranking is provably untouched: gated retrieval
+(96.2/100/98.1) matches the pre-gate reranker run (96/100/98). The one residual
+leak is devops-027 (GitLab CI, 0.655) — reported, not tuned away (catching it
+would false-reject real positives).
+
+## Steps
+
+1. `git checkout feat/fbl006-negative-gating`
+2. `git diff main --stat` — expect **17 files changed**: code
+   (`settings.py`, `api.py`, `eval/scorer.py`, `mcp/mcp_server.py`, three test
+   files), the two new negatives in the YAML, two new baselines, the diagnostic
+   script `scripts/fbl006_diagnose.py`, and doc updates (this file, CLAUDE.md,
+   ADR-012, TODO, RUNBOOK, current_context).
+3. **Read the units-bug fix.** `git diff main -- eval/scorer.py` — the negative
+   branch changes from `reranker_score < 0.0` to reading the shipped
+   `weak_match` flag. Confirm the reasoning in the docstring.
+4. **Confirm the gate is real behavior, not metric-gaming.**
+   `git diff main -- src/dev_rag/api.py src/dev_rag/settings.py` — `weak_match`
+   is computed in the API response (`reranker_score < settings.reranker_min_score`),
+   and `mcp_server.py` annotates "⚠️ weak match". The scorer reads that same
+   shipped field.
+5. **Verify the two new negatives are genuinely absent** (same bar as the
+   original three):
+   ```bash
+   for b in dockerdeepdive a_developers_essential_guide_to_docker_compose \
+            ansible-for-devops ansible-for-real-life-automation; do
+     for term in istio pulumi; do
+       printf "%-45s %-8s %s\n" "$b" "$term" \
+         "$(grep -o -i "$term" data/chunks/${b}_chunks.json | wc -l)"
+     done
+   done
+   ```
+   — all counts 0.
+6. `uv run pytest` — expect **143 passed**.
+7. Reproduce the **RRF** 39q baseline (reranker OFF):
+   ```bash
+   uv run uvicorn dev_rag.api:app --host 127.0.0.1 --port 8000   # terminal 1
+   uv run python eval/run_eval.py --domain devops --no-save \
+       --compare eval/baselines/2026-07-06_hybrid_rrf_4books_39q.json   # terminal 2
+   ```
+   — expect R@1 84.6 / R@3 92.3 / MRR 89.4, +0.0% deltas, negative precision
+   n/a, failures devops-020 + para-001b. Ctrl-C the server.
+8. Reproduce the **gated reranker** 39q baseline (slow — ~10–13 min on CPU):
+   ```bash
+   RERANKER_ENABLED=true RERANKER_CANDIDATES=10 \
+       uv run uvicorn dev_rag.api:app --host 127.0.0.1 --port 8000   # terminal 1
+   uv run python eval/run_eval.py --domain devops --no-save \
+       --compare eval/baselines/2026-07-06_hybrid_rrf_4books_39q.json   # terminal 2
+   ```
+   — expect R@1 96.2 / R@3 100 / MRR 98.1, **negative precision 80.0%**,
+   the ONLY failure devops-027 (GitLab CI). Optional: `scripts/fbl006_diagnose.py`
+   re-prints the per-question logits (why devops-027 leaks at 0.655). Ctrl-C.
+9. If satisfied:
+   ```bash
+   git checkout main
+   git merge --no-ff feat/fbl006-negative-gating
+   git push origin main
+   ```
+   Note: the ADR-012 reranker-default decision stays OFF pending your call —
+   the reopen data (R@3 +7.7, neg precision 80%) is now clean, weighed against
+   ~100× latency and the one residual near-domain leak.
+
+---
+
+# Small Fixes Log
+
+Short verify entries for code fixes committed directly to main (no feature
+branch). Newest first. Format: date, commit, one line on what changed, 2–3
+numbered steps with expected output.
+
+*(none yet)*

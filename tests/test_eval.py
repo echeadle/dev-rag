@@ -127,14 +127,27 @@ def test_negative_none_under_plain_rrf():
     assert s.negative_correct is None
 
 
-def test_negative_uses_reranker_logit():
+def test_negative_uses_reranker_weak_match_flag():
+    """FBL-006: scorer trusts the API's shipped weak_match flag (the gate
+    that actually ships), not a scorer-local threshold. Reranker scores are
+    sigmoid probabilities in (0,1), so the old `reranker_score < 0.0` could
+    never fire — weak_match replaces it."""
     question = q(no_answer=True)
-    low = rr([{"source": "a.pdf", "content": "x", "relevance_score": -4.2,
-               "reranker_score": -4.2}])
-    high = rr([{"source": "a.pdf", "content": "x", "relevance_score": 3.0,
-                "reranker_score": 3.0}])
-    assert score_question(question, low).negative_correct is True
-    assert score_question(question, high).negative_correct is False
+    weak = rr([{"source": "a.pdf", "content": "x", "relevance_score": 0.2,
+                "reranker_score": 0.2, "weak_match": True}])
+    strong = rr([{"source": "a.pdf", "content": "x", "relevance_score": 0.9,
+                  "reranker_score": 0.9, "weak_match": False}])
+    assert score_question(question, weak).negative_correct is True
+    assert score_question(question, strong).negative_correct is False
+
+
+def test_negative_none_when_reranker_did_not_run():
+    """FBL-006: weak_match None (reranker off / fallback) is not computable
+    under hybrid RRF — must be None, never a fake pass."""
+    question = q(no_answer=True)
+    result = rr([{"source": "a.pdf", "content": "x", "relevance_score": 0.03,
+                  "reranker_score": None, "weak_match": None}])
+    assert score_question(question, result).negative_correct is None
 
 
 def test_negative_uses_dense_cosine():

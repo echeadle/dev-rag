@@ -92,6 +92,19 @@ def test_format_results_relevance_score_field():
     assert "0.75" in out
 
 
+def test_format_results_flags_weak_match():
+    """FBL-006: a low-confidence hit (weak_match=True) is annotated so the
+    caller knows the corpus may not actually answer the query."""
+    weak = [{"source": "x.pdf", "domain": "devops", "content": "c",
+             "relevance_score": 0.2, "weak_match": True}]
+    strong = [{"source": "x.pdf", "domain": "devops", "content": "c",
+               "relevance_score": 0.9, "weak_match": False}]
+    assert "weak match" in _format_results(weak)
+    assert "weak match" not in _format_results(strong)
+    # absent flag (reranker off / non-reranked result) → no annotation
+    assert "weak match" not in _format_results(FAKE_RESULTS)
+
+
 # ---------------------------------------------------------------------------
 # _handle_domain_search (devops)
 # ---------------------------------------------------------------------------

@@ -47,6 +47,15 @@ class Settings(BaseSettings):
     reranker_top_n: int = 10
     reranker_candidates: int = 50
     reranker_batch_size: int = 32
+    # FBL-006 confidence gate: bge-reranker-v2-m3's CrossEncoder.predict()
+    # returns a SIGMOID probability in (0,1), not a raw logit. A result whose
+    # top reranker_score is below this cutoff is flagged `weak_match` (a soft
+    # signal, not a drop — ranking/R@k unchanged). 0.5 = sigmoid midpoint =
+    # logit 0 ("irrelevant"), matching the dense branch's 0.5 cosine cutoff.
+    # Diagnostic 2026-07-06 (5 labelled negatives): at 0.5, 4/5 out-of-scope
+    # queries flag weak; only devops-027 (GitLab CI, backed by the corpus's
+    # Jenkins chapter) leaks. Tune per-run with RERANKER_MIN_SCORE.
+    reranker_min_score: float = 0.5
 
     # Domains
     valid_domains: list[str] = ["devops", "travel", "python", "ai"]

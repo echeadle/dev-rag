@@ -73,17 +73,23 @@ def score_question(q, result) -> QuestionScore:
 def _negative_correct(result) -> bool | None:
     """
     FBL-005: "no answer" is only judgeable on a score that carries
-    relevance semantics. Cross-encoder logits (< 0 ≈ irrelevant, sigmoid
-    < 0.5) and dense cosine (< 0.5) qualify. Plain hybrid RRF scores
-    encode RANK, not relevance (max ≈ 0.033), so no threshold on them
-    means anything — return None (metric not computable this run) rather
-    than the old always-true `< 0.5` fake pass.
+    relevance semantics. Dense cosine (< 0.5) qualifies; plain hybrid RRF
+    scores encode RANK, not relevance (max ≈ 0.033), so no threshold on
+    them means anything — return None (metric not computable this run).
+
+    FBL-006: when the reranker ran, read the API's shipped `weak_match`
+    flag rather than thresholding here. The reranker's score is a SIGMOID
+    probability in (0,1), so the old `reranker_score < 0.0` compared a
+    probability against a logit-space cutoff and could NEVER fire —
+    mechanically pinning negative precision at 0%. Trusting the shipped
+    flag ties the metric to the gate that actually ships (settings.
+    reranker_min_score), so this measures real behavior, not a scorer knob.
     """
     if not result.results:
         return True
     top = result.results[0]
-    if top.get("reranker_score") is not None:
-        return top["reranker_score"] < 0.0
+    if top.get("weak_match") is not None:
+        return top["weak_match"]
     if getattr(result, "search_mode", None) == "dense":
         return top.get("relevance_score", 1.0) < 0.5
     return None
