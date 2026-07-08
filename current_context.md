@@ -9,12 +9,11 @@ eval/baselines/2026-07-06_{hybrid_rrf,reranker_c10}_4books_39q.json,
 scripts/fbl006_diagnose.py
 
 ## Current Step
-SLICE A (FBL-006 negative gating) MERGED to main (9fca9d0) and pushed to
-origin. Checklist steps 1–8 run live (both matched 39q baselines reproduced
-against a live server, not just re-read from JSON), then Ed approved the
-merge. `feat/fbl006-negative-gating` branch deleted locally (was never
-pushed to origin — merge went straight through `main`). 143 tests green.
-Only open item is the ADR-012 reranker-default call below.
+SLICE A (FBL-006 negative gating) MERGED to main (9fca9d0, then 28cb936)
+and pushed to origin. Checklist steps 1–8 run live, Ed approved the merge,
+feature branch deleted. 143 tests green. ADR-012 reranker-default decision
+made (2026-07-08): **stays OFF** — see below. FBL-006 / Slice A is fully
+closed; no open items remain on this thread.
 
 ## What Slice A found and shipped
 A0 diagnosis overturned the FBL-006 premise: the reranker's "0% negative
@@ -55,11 +54,24 @@ asserted: gated retrieval (96.2/100/98.1/92.6) ≈ pre-gate reranker run
 as the rigorous comparison; composite (88.3→94.7) is only DIRECTIONAL (the runs
 weight the negative term differently), not a precise gain.
 
+## ADR-012 decision (2026-07-08)
+Ed reviewed the reopen data — R@3 +7.7 and negative precision 80%, clearing
+the ADR's own +3 R@3 trigger — against ~100× latency (~15–20 s/query on CPU)
+and the one residual leak (devops-027 GitLab CI). **Decision: default stays
+OFF.** Rationale: this is a single-user tool used interactively via MCP,
+where search may be called many times per session — the latency cost
+outweighs the quality gain as a default. `RERANKER_ENABLED=true` remains
+available per-run for high-precision or suspected-near-domain-bait searches.
+Not a standing open item — reopen only on a material change (GPU inference,
+caching, further corpus growth). `settings.reranker_enabled` unchanged
+(`False`), so no code diff — recorded in ADR-012 (DEV-RAG-ARCHITECTURE.md)
+and docs/TODO.md.
+
 ## Next Action
-ADR-012 reranker-default decision is Ed's — reopen data now clean (R@3 +7.7,
-neg precision 80%) vs ~100× latency + the one residual leak (devops-027
-GitLab CI). Recorded, not flipped. No code work blocked on this; it's a
-default-setting call whenever Ed's ready.
+None queued. FBL-006 / Slice A / ADR-012 thread is fully closed. Parked
+backlog (not started): structure+enrich (FBL-004), GraphRAG (no spec yet,
+P8), pgvector (P7), headroom-ai (deferred). Pick the next thread with Ed
+when ready.
 
 ## Done When (Slice A) — status
 - [x] A0 diagnosis: units bug found; 0.5 separates 4/5 negatives (n=5)
@@ -70,12 +82,13 @@ default-setting call whenever Ed's ready.
 - [x] ADR-012 / TODO / CLAUDE / RUNBOOK updated
 - [x] BRANCH-REVIEW-CHECKLIST Slice A section written
 - [x] Ed reviews + merges (9fca9d0, pushed to origin/main)
+- [x] ADR-012 reranker-default decision made (stays OFF)
 
 ## Blockers
-None. Parked: ADR-012 default decision (Ed), structure+enrich (FBL-004),
-GraphRAG P8, pgvector P7, headroom-ai.
+None. Parked: structure+enrich (FBL-004), GraphRAG P8, pgvector P7,
+headroom-ai.
 
 ## Phase
 Corpus: 4 books / 1495 chunks. Eval: 39 questions / 5 negatives. FBL-006
-resolved (units bug + soft gate) and merged to main. Next: Ed's ADR-012
-reranker-default call.
+resolved and merged to main. ADR-012 decided (reranker OFF by default).
+No active phase — awaiting Ed's pick of the next thread.

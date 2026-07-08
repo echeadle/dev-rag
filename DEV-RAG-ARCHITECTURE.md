@@ -534,10 +534,17 @@ and the leak is reported, not tuned away. False-flag cost at 0.5: 2/10 sampled
 positives (multi-stage 0.301, healthcheck 0.451) get flagged weak but are still
 returned (R@k intact).
 
-**Reranker default remains Ed's open call (ADR unchanged).** The reopen data:
-R@3 +7.7 (real headroom now that the 4th book pushed RRF off the ceiling) and
-80% negative precision, weighed against ~100× latency and the one confident
-near-domain leak. Recorded, not flipped. Tracked in docs/TODO.md.
+**Reranker default decision (2026-07-08): stays OFF.** Ed reviewed the reopen
+data — R@3 +7.7 (real headroom now that the 4th book pushed RRF off the
+ceiling) and 80% negative precision, clearing the ADR's own +3 R@3 trigger —
+against ~100× latency (~15–20 s/query on CPU) and the one confident
+near-domain leak (devops-027). For a single-user tool used interactively via
+MCP, where search may be called many times per session, the latency cost
+outweighs the quality gain by default. `reranker_enabled` stays `False`;
+`RERANKER_ENABLED=true` remains available per-run for high-precision or
+suspected-near-domain-bait searches. Not automatically revisited — reopen
+only on a material change (GPU inference, caching, or a corpus growth that
+changes the tradeoff again).
 
 ---
 

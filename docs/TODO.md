@@ -107,7 +107,7 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
   tuned past it. This residual + ~100× latency feed the still-open ADR-012
   default decision.
 
-### Reranker default (ADR-012) — REOPENED 2026-07-06, decision still Ed's
+### Reranker default (ADR-012) — DECIDED 2026-07-08: stays OFF
 - The 4th book pushed RRF R@3 off the ceiling (100→92), creating the first
   real reranker headroom. **Matched 39q A/B (candidates=10, gated,
   `_reranker_c10_4books_39q.json` vs `_hybrid_rrf_4books_39q.json`):**
@@ -128,8 +128,12 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
 - What still weighs against default-ON: ~100× latency (~15–20 s/query @10 on
   CPU) and the ONE residual leak (devops-027 GitLab CI, a confident
   near-domain hallucination the Jenkins chapter feeds). So the *tradeoff*
-  genuinely reopens; it is NOT automatically "turn it ON." **Decision is Ed's**
-  (ADRs are final) — recorded here, ADR-012 decision line left OFF pending review.
+  genuinely reopened; it was NOT automatically "turn it ON."
+- **Decision (Ed, 2026-07-08): stays OFF.** For a single-user tool used
+  interactively via MCP (search may be called many times per session), the
+  ~100× latency outweighs the quality gain as a default. `RERANKER_ENABLED=true`
+  stays available per-run. Not a standing open item anymore — reopen only on a
+  material change (GPU inference, caching, further corpus growth).
 
 ---
 
