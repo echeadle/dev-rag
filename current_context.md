@@ -1,5 +1,5 @@
 # Current Context — dev-rag
-_Last updated: 2026-07-06_
+_Last updated: 2026-07-08_
 
 ## Active Files
 src/dev_rag/settings.py (reranker_min_score), src/dev_rag/api.py (weak_match),
@@ -9,9 +9,12 @@ eval/baselines/2026-07-06_{hybrid_rrf,reranker_c10}_4books_39q.json,
 scripts/fbl006_diagnose.py
 
 ## Current Step
-SLICE A (FBL-006 negative gating) COMPLETE on branch
-`feat/fbl006-negative-gating` — NOT yet merged. Ready for Ed's checklist
-review. 143 tests green.
+SLICE A (FBL-006 negative gating) MERGED to main (9fca9d0) and pushed to
+origin. Checklist steps 1–8 run live (both matched 39q baselines reproduced
+against a live server, not just re-read from JSON), then Ed approved the
+merge. `feat/fbl006-negative-gating` branch deleted locally (was never
+pushed to origin — merge went straight through `main`). 143 tests green.
+Only open item is the ADR-012 reranker-default call below.
 
 ## What Slice A found and shipped
 A0 diagnosis overturned the FBL-006 premise: the reranker's "0% negative
@@ -53,10 +56,10 @@ as the rigorous comparison; composite (88.3→94.7) is only DIRECTIONAL (the run
 weight the negative term differently), not a precise gain.
 
 ## Next Action
-1. Ed reviews `docs/BRANCH-REVIEW-CHECKLIST.md` (Slice A section) + merges.
-2. THEN: ADR-012 reranker-default decision is Ed's — reopen data now clean
-   (R@3 +7.7, neg precision 80%) vs ~100× latency + the one residual leak
-   (devops-027 GitLab CI). Recorded, not flipped.
+ADR-012 reranker-default decision is Ed's — reopen data now clean (R@3 +7.7,
+neg precision 80%) vs ~100× latency + the one residual leak (devops-027
+GitLab CI). Recorded, not flipped. No code work blocked on this; it's a
+default-setting call whenever Ed's ready.
 
 ## Done When (Slice A) — status
 - [x] A0 diagnosis: units bug found; 0.5 separates 4/5 negatives (n=5)
@@ -65,8 +68,8 @@ weight the negative term differently), not a precise gain.
 - [x] matched 39q RRF + gated-reranker baselines saved
 - [x] 143 tests green
 - [x] ADR-012 / TODO / CLAUDE / RUNBOOK updated
-- [ ] BRANCH-REVIEW-CHECKLIST Slice A section written (file-count line LAST)
-- [ ] Ed reviews + merges
+- [x] BRANCH-REVIEW-CHECKLIST Slice A section written
+- [x] Ed reviews + merges (9fca9d0, pushed to origin/main)
 
 ## Blockers
 None. Parked: ADR-012 default decision (Ed), structure+enrich (FBL-004),
@@ -74,4 +77,5 @@ GraphRAG P8, pgvector P7, headroom-ai.
 
 ## Phase
 Corpus: 4 books / 1495 chunks. Eval: 39 questions / 5 negatives. FBL-006
-resolved (units bug + soft gate). Next: Ed's ADR-012 reranker-default call.
+resolved (units bug + soft gate) and merged to main. Next: Ed's ADR-012
+reranker-default call.
