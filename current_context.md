@@ -1,5 +1,5 @@
 # Current Context — dev-rag
-_Last updated: 2026-07-08_
+_Last updated: 2026-07-08 (structure+enrich deferral)_
 
 ## Active Files
 src/dev_rag/settings.py (reranker_min_score), src/dev_rag/api.py (weak_match),
@@ -67,11 +67,28 @@ caching, further corpus growth). `settings.reranker_enabled` unchanged
 (`False`), so no code diff — recorded in ADR-012 (DEV-RAG-ARCHITECTURE.md)
 and docs/TODO.md.
 
+## Structure+enrich (Phase 1b) decision (2026-07-08)
+FBL-004 cost estimate cleared (~$6-13/pass, trivial). Scoped a narrower
+first slice (structure-aware chunking only, no LLM enrichment) before
+writing an implementation plan — investigation found the concrete
+justification (eval failure devops-020, "chunker splits mid-procedure")
+no longer applies: it now fails on source competition between books
+(newer Ansible book outranking Docker Deep Dive), not chunk splitting,
+and the gated reranker (Slice A) already fixes it. Also, the spec's
+`structure.py` is LLM-based with an unimplemented boundary-detection TODO
+stub (not regex-over-headings, that was a stale assumption), and a
+faithful implementation would ripple through load.py/retrieve*.py/
+embed.py/api.py/mcp_server.py via a redesigned Chunk dataclass. **Ed's
+call: defer entirely** (including a metadata-only version) until a real,
+currently-unfixed eval failure genuinely points at a chunk-boundary
+defect. Full reasoning in docs/TODO.md and IMPLEMENTATION-ORDER.md.
+
 ## Next Action
-None queued. FBL-006 / Slice A / ADR-012 thread is fully closed. Parked
-backlog (not started): structure+enrich (FBL-004), GraphRAG (no spec yet,
-P8), pgvector (P7), headroom-ai (deferred). Pick the next thread with Ed
-when ready.
+None queued. FBL-006 / Slice A / ADR-012 thread is fully closed.
+Structure+enrich explicitly deferred (see above, not just parked without
+reason). Remaining backlog (not started, no immediate justification):
+GraphRAG (no spec yet, P8), pgvector (P7), headroom-ai (deferred). Pick
+the next thread with Ed when ready.
 
 ## Done When (Slice A) — status
 - [x] A0 diagnosis: units bug found; 0.5 separates 4/5 negatives (n=5)
@@ -85,10 +102,11 @@ when ready.
 - [x] ADR-012 reranker-default decision made (stays OFF)
 
 ## Blockers
-None. Parked: structure+enrich (FBL-004), GraphRAG P8, pgvector P7,
-headroom-ai.
+None. Parked: structure+enrich (Phase 1b — explicitly deferred, see above),
+GraphRAG P8, pgvector P7, headroom-ai.
 
 ## Phase
 Corpus: 4 books / 1495 chunks. Eval: 39 questions / 5 negatives. FBL-006
 resolved and merged to main. ADR-012 decided (reranker OFF by default).
-No active phase — awaiting Ed's pick of the next thread.
+Structure+enrich (Phase 1b) explicitly deferred. No active phase —
+awaiting Ed's pick of the next thread.

@@ -139,10 +139,22 @@ enrichment earns its cost, and gated on the FBL-004 cost estimate.*
 - [x] FBL-004 cost estimate ✅ 2026-07-08 — real corpus (1495 chunks, 4 books):
       ~$12.56 sync / ~$6.28 via Batch API for a full enrichment pass (worst
       case ~$26/~$13). Cost is a non-issue at this scale — the cost gate is
-      cleared. See docs/TODO.md for the full breakdown. Whether to actually
-      start this section is still a separate scope decision, Ed's to make.
-- [ ] Implement `structure.py` — chapter/section detection; try **regex over
-      pymupdf4llm's markdown `##` headings first** (may need no LLM at all)
+      cleared. See docs/TODO.md for the full breakdown.
+
+**Section DEFERRED (Ed's call, 2026-07-08) — do not start.** The cost gate
+cleared, but investigating a narrower first slice (structure-aware
+chunking only) found the concrete justification (eval failure
+`devops-020`) is already fixed by the gated reranker — it's source
+competition between books now, not a chunking defect. Also: the spec's
+`structure.py` (below) is LLM-based, not regex — its boundary-detection
+logic is an unfinished TODO stub in the spec, not ready to wire up. Full
+reasoning in docs/TODO.md. **Re-open only if a new eval failure genuinely
+points at a chunk-boundary problem the reranker can't fix.**
+
+- [ ] Implement `structure.py` — LLM-based chapter/section detection per
+      `planning/ingest-pipeline-spec.md` Stage 3 (its boundary-detection
+      logic is currently an unimplemented TODO stub in the spec itself —
+      not regex over markdown headings, that was a stale assumption)
 - [ ] Implement semantic chunking at section boundaries (spec Stage 4 proper)
 - [ ] Implement `enrich.py` — summaries, keywords, synthetic questions, code
 - [ ] Add enrichment columns to SQLite schema (`migrations/00X_enriched_schema.sql`)

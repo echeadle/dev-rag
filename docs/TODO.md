@@ -96,6 +96,29 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
   `model="claude-sonnet-4-6"` should be revisited against the then-current
   recommended model whenever Phase 1b is actually implemented. Whether to
   actually greenlight Phase 1b is a separate scope decision, still Ed's.
+
+**Phase 1b (structure+enrich) — Ed's call, 2026-07-08: DEFER.** With the
+cost gate cleared, we scoped a narrower first slice (structure-aware
+chunking only, no LLM enrichment) and investigated before writing an
+implementation plan. Two things killed the concrete justification:
+1. The eval failure this was meant to fix (`devops-020`,
+   `chunker_splits_procedure`) no longer fails because of chunk splitting —
+   it fails because a newer Ansible book now outranks Docker Deep Dive for
+   that query (source competition). The gated reranker (Slice A / FBL-006)
+   already fixes it — it was absent from the reranker-run failure list
+   reproduced live this session.
+2. `planning/ingest-pipeline-spec.md` Stage 3 (`structure.py`) is
+   LLM-based, not regex-based, and its boundary-detection logic is an
+   unfinished TODO stub in the spec itself — not ready-to-wire, needs real
+   design. A faithful implementation also changes the `Chunk` dataclass
+   shape, rippling through `load.py`, `retrieve*.py`, `embed.py`,
+   `api.py`, `mcp_server.py`, and eval fixtures.
+
+**Decision: hold structure+enrich entirely** (including a metadata-only
+version) until a real, currently-unfixed eval failure actually points at a
+chunk-boundary defect — not source competition, not something the
+reranker already handles.
+
 - [x] **FBL-005** — ✅ 2026-07-06 (Phase 4): negative precision is mode-aware —
   reranker logit < 0, dense cosine < 0.5, and **None (n/a) under plain RRF**
   since RRF encodes rank, not relevance. Reporter says so explicitly.
