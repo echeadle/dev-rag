@@ -40,6 +40,10 @@ bottom of this file, in the same commit. Docs-only changes are exempt.
   see "Practices of the Python Pro Ingest Review" at the bottom — 2nd
   python-domain book, and an added-value eval question that was tried
   and honestly parked rather than forced.
+- **Bourne RAG book ingest / AI domain opened**
+  (feat/ingest-bourne-rag-ai-domain): see "Bourne RAG Ingest Review" at
+  the bottom — first book in the `ai` domain, first real run of the
+  pre-written `ai_questions.yaml` eval set.
 
 ## Steps (generic + Phase 3 example)
 
@@ -818,6 +822,100 @@ questions.
     git merge --no-ff feat/ingest-practices-python-pro
     git push origin main
     ```
+
+---
+
+# Bourne RAG Ingest Review (feat/ingest-bourne-rag-ai-domain)
+
+**What this review verifies.** This branch **opens the `ai` domain for
+the first time** — Unlocking Data with Generative AI and RAG (Bourne) is
+the first book ingested into it. No pipeline code changes (domain
+routing was already fully generic, same story as Phase 5's first python
+book). The tracked edits are: a new eval baseline, a comment-only header
+update to `data/evaluation/ai_questions.yaml` (no question content
+changed), and the usual three doc updates.
+
+The interesting part: `ai_questions.yaml` **already existed**, written
+before any AI-domain content was ingested, deliberately gated on nothing
+(`expected_source: null` throughout — meant to be answerable by whichever
+AI book landed first, not written against Bourne specifically). This
+branch is the first time that question set met real content. All 7
+questions retrieve top-1 from Bourne's book — genuine, working
+retrieval into a brand-new domain. Because every question has
+`expected_source: null`, retrieval_at_k/MRR/composite read `n/a` by
+design (those metrics need a specific expected source to score against)
+— only `chunk_match` applies here, at 80% (4 of 5 applicable questions
+passed; 2 have no `expected_chunk_contains` keywords so they're N/A, not
+failures). The one chunk_match miss (`ai-005`, expects both "retrieval"
+and "generation" in the top chunk) was checked directly, not assumed: the
+book has 376 "retrieval" mentions overall, just not in the specific
+top-ranked chunk (a RAGAS-metrics passage that leans generation-side) —
+a chunk-boundary keyword co-occurrence artifact, not a corpus gap.
+
+**What "pass" looks like.** 147 tests still green (no code changed).
+Health shows `ai: 608/608 in_sync`, devops/python unaffected. The eval
+run shows all 7 questions with `top_1_source:
+UNLOCKING_DATA_WITH_GENERATIVE_AI_AND_RAG.pdf`, chunk_match 80%.
+
+## Steps
+
+1. `git checkout feat/ingest-bourne-rag-ai-domain`
+2. `git diff main --stat` — expect **5 files changed, no code**: the new
+   baseline `eval/baselines/2026-07-09_ai_1book_7q.json`, a comment-only
+   diff on `data/evaluation/ai_questions.yaml` (header note, no question
+   fields changed), and three doc updates (`CLAUDE.md`,
+   `current_context.md`, `docs/TODO.md`). Anything under `src/`, `mcp/`,
+   `tests/`, or `eval/*.py` in the stat is unexpected — stop and ask why.
+3. `git diff main -- data/evaluation/ai_questions.yaml` — confirm only
+   the top-of-file comment block changed; every question's fields
+   (`expected_source`, `expected_chunk_contains`, etc.) are untouched.
+4. `uv run pytest` — expect **147 passed** (unchanged — confirms no code
+   drifted).
+5. Confirm the corpus loaded at parity (no re-ingest needed):
+   ```bash
+   sqlite3 data/dev_rag.db \
+     "SELECT domain, count(*) FROM chunks WHERE status='active' GROUP BY domain;
+      SELECT 'fts', count(*) FROM chunks_fts;"
+   ```
+   — expect `ai|608`, `devops|2072`, `python|929`, `fts|3609`.
+6. Confirm the new book is queryable (verify stage against the live stores):
+   ```bash
+   uv run python -m dev_rag.ingest.pipeline \
+       --source data/books/UNLOCKING_DATA_WITH_GENERATIVE_AI_AND_RAG.pdf \
+       --domain ai --start-stage 8 \
+       --query "What is the difference between naive RAG and hybrid RAG retrieval?"
+   ```
+   — expect `[8 verify] parity OK (608); top hit
+   unlocking_data_with_generative_ai_and_rag_...`
+7. Start the server with defaults:
+   ```bash
+   uv run uvicorn dev_rag.api:app --host 127.0.0.1 --port 8000
+   ```
+8. In a second terminal — reproduce the AI eval (deterministic):
+   ```bash
+   uv run python eval/run_eval.py --domain ai --no-save
+   ```
+   — expect `chunk_match 80.0%`, retrieval_at_k/MRR/composite all `n/a`
+   (by design — see notes above), 7/7 questions scored.
+9. OPTIONAL — spot-check that all 7 questions genuinely hit the new book:
+   ```bash
+   uv run python -c "
+   import json
+   d = json.load(open('eval/baselines/2026-07-09_ai_1book_7q.json'))
+   for q in d['questions']:
+       print(q['question_id'], q['top_1_source'])
+   "
+   ```
+   — expect all 7 rows to say `UNLOCKING_DATA_WITH_GENERATIVE_AI_AND_RAG.pdf`.
+10. Ctrl-C the server.
+11. If satisfied:
+    ```bash
+    git checkout main
+    git merge --no-ff feat/ingest-bourne-rag-ai-domain
+    git push origin main
+    ```
+    After merging, `dev-rag` has 3 populated domains (devops, python,
+    ai) — `travel` is the only domain left empty.
 
 ---
 

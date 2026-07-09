@@ -1,10 +1,24 @@
 # dev-rag AI domain evaluation questions
-# Enabled after RAG-Driven Generative AI (Rothman) and/or
-# A Simple Guide to RAG (Kimothi) are ingested.
+# Written before any AI-domain content existed, gated on nothing
+# (expected_source: null throughout) so they'd work with whichever book
+# landed first. First real content 2026-07-09: Unlocking Data with
+# Generative AI and RAG (Bourne) — 608 chunks. Rothman/Kimothi still
+# planned; when ingested, expected_source stays null (these questions
+# are meant to be answerable by any AI-domain book, not gated to one).
 #
 # This domain covers RAG architecture, LLM patterns, evaluation,
 # and AI engineering — meta questions about building the system
 # you are using to answer them.
+#
+# NOTE (2026-07-09): retrieval_at_k/MRR/composite all read n/a for this
+# domain by design — every question has expected_source: null (no single
+# book is required to answer them), and those metrics need a specific
+# expected source to score against. chunk_match is the only applicable
+# metric here. ai-005 currently scores chunk_match 0.0 — verified this
+# is a chunk-boundary artifact, not a corpus gap: the book has 376
+# mentions of "retrieval" overall, just not co-located with "generation"
+# in the specific top-ranked chunk (a RAGAS-metrics passage that leans
+# generation-side). Left as-is rather than loosening the check.
 
 # ---------------------------------------------------------------------------
 # FACTUAL (ai-001, ai-002)

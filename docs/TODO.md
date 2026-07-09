@@ -257,11 +257,20 @@ Books and sources to ingest as the system comes online:
   securing cloud services and web applications; written by Mozilla Firefox
   Operations Security lead; core principles age well despite 2018 publication
 
-### AI Domain (new)
-- [ ] Unlocking Data with Generative AI and RAG (Bourne, Packt 2024) — **already owned**;
-  covers naïve RAG, hybrid RAG, reranking, query expansion, and RAGAS evaluation;
-  check Packt account at home for Second Edition (adds GraphRAG, agentic memory)
-  — ingest whichever edition is available
+### AI Domain
+- [x] Unlocking Data with Generative AI and RAG (Bourne, Packt 2024) — ✅
+  2026-07-09 (`feat/ingest-bourne-rag-ai-domain`): **opens the AI domain**
+  — first book, 608 chunks, 346 pages (334 kept). `ai` domain now
+  608/608 in_sync. Stage-8 verify passed first try. The 7-question
+  `ai_questions.yaml` eval set was pre-written before any AI content
+  existed (gated on nothing, `expected_source: null` throughout) — ran
+  unmodified against the new corpus, all 7 questions retrieve top-1 from
+  this book. retrieval_at_k/MRR/composite read n/a by design (no
+  expected_source to score against); chunk_match 80% (4/5 applicable),
+  with the one miss (ai-005) verified as a chunk-boundary keyword
+  co-occurrence artifact, not a coverage gap (376 "retrieval" mentions
+  in the book overall). First AI baseline:
+  `eval/baselines/2026-07-09_ai_1book_7q.json`.
 - [ ] RAG-Driven Generative AI (Rothman, Packt 2024) — **recommended purchase**;
   advanced RAG patterns, adaptive RAG with human feedback, knowledge graphs;
   directly applicable to dev-rag architecture decisions
