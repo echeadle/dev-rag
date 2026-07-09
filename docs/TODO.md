@@ -51,7 +51,18 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
   converted negative→positive (Compose book ch12 covers Terraform+ECS, so the
   old negative broke); devops-027 (GitLab CI) is the replacement negative;
   nulls are deliberate + documented per-question (multi-source or corpus gap).
-- [ ] **Phase 5** — Python domain
+- [x] **Phase 5** — ✅ 2026-07-08. Ingested Five Lines of Code (Clausen)
+  under `domain=python` (532 chunks, 338 pages) — no pipeline code changes
+  needed, domain routing was already fully generic. Verified end-to-end:
+  `/health` shows `python: 532/532 in_sync`; live `search_python` MCP
+  query confirmed real content; `expected_source` populated for
+  python-004/005/006 (verified against real chunk text, not guessed).
+  First python baseline: `eval/baselines/2026-07-08_python_6q.json`
+  (R@1/R@3/R@5/MRR 100%, composite 85.3%). chunk_match 50%: python-003
+  (GIL question) has no answer in this book — a genuine coverage gap
+  (the book is refactoring/optimization-focused with TypeScript examples,
+  not Python internals), not a retrieval defect. python-001/002/003 stay
+  `expected_source: null` — they were never gated on this specific book.
 - [ ] **Phase 5b** — Unified search_all ranking via reranker
   - [ ] Review `search_all` result budget (found in MCP smoke test 2026-07-05):
     the MCP fan-out fallback splits `n_results // 4` across domains
@@ -234,9 +245,13 @@ Books and sources to ingest as the system comes online:
   **low priority** — ingest after RAG books are working
 - [ ] Ingest order: Bourne first (already owned), then Rothman, then Kimothi,
   then Stable Diffusion when Oryx Pro is set up
-- [ ] Confirm Python book titles from shelf
-- [ ] Five Lines of Code (Clausen) — refactoring with Python examples;
-  enables code review queries during Claude Code sessions
+- [x] Five Lines of Code (Clausen) — ✅ ingested 2026-07-08 (Phase 5, 532
+  chunks). Correction: code examples are **TypeScript, not Python** (the
+  "with Python examples" note above was wrong — verified against real
+  ingested content); the refactoring rules/principles apply language-
+  agnostically, same as Art of Unit Testing's JS examples below.
+- [ ] Confirm remaining Python book titles from shelf (Practices of the
+  Python Pro / Art of Unit Testing, both already owned — see below)
 - [ ] Practices of the Python Pro (Hillard, Manning) — **already owned**;
   professional software design, modularisation, reducing complexity,
   coding style and application design at scale; complements Five Lines
@@ -359,7 +374,10 @@ is working and evaluated.
 - [ ] **porter ascii tokenizer** — does flag-level BM25 matching actually
   work? Determined by ablation queries after hybrid search is live.
   *(Review OBS-006: still open; may move to `unicode61` + custom `tokenchars`.)*
-- [ ] **Python book titles** — confirm from shelf before ingesting Python domain.
+- [x] **Python book titles** — Five Lines of Code confirmed and ingested
+  2026-07-08 (Phase 5). Remaining two candidates (Practices of the Python
+  Pro, Art of Unit Testing) still need shelf confirmation before their
+  own ingests.
 - [ ] **Ansible book titles** — confirm from shelf before ingesting DevOps corpus.
 
 ---

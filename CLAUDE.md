@@ -70,8 +70,8 @@ Ingest tests never load real BGE-M3 — the model is always mocked.
   OBS-006 resolved: porter ascii kept (ablation in hybrid-search-spec.md).
 - **MCP smoke (2026-07-05):** MCP server smoke-tested e2e over real stdio;
   `.mcp.json` registers it for Claude Code sessions; `/collections` real counts.
-  Corpus: 4 books, 1495 chunks (Deep Dive 311 + Compose guide 272 + Ansible
-  for DevOps 499 + Ansible for Real-Life Automation 413, last ingested
+  Corpus: 4 DevOps books, 1495 chunks (Deep Dive 311 + Compose guide 272 +
+  Ansible for DevOps 499 + Ansible for Real-Life Automation 413, last ingested
   2026-07-06 on `feat/ingest-ansible-real-life`). Current official RRF baseline
   is `eval/baselines/2026-07-06_hybrid_rrf_4books_39q.json` (39 questions, 5
   negatives; R@1 84.6 / R@3 92.3 / MRR 89.4) — supersedes the 37q file (Slice A
@@ -102,6 +102,18 @@ Ingest tests never load real BGE-M3 — the model is always mocked.
   `_reranker_c10_4books_39q.json`: gated reranker gives neg precision 0→80%
   (4/5) with R@1 96.2 / R@3 100. Residual leak devops-027 (GitLab CI). The
   ADR-012 reranker-default decision is still Ed's (reopen data + latency).
+- **Phase 5 (2026-07-08):** first second domain populated — `python` domain
+  ingested (Five Lines of Code, Clausen: 532 chunks, 338 pages). No pipeline
+  code changes needed — domain routing (ChromaDB per-domain collections,
+  SQLite `domain` column filtering, `/search`, `/health`, MCP
+  `search_python`) was already fully generic; this proved it end-to-end
+  with real data. `/health` confirms `python: 532/532 in_sync`, `devops`
+  unaffected at 1495. First python-domain eval baseline:
+  `eval/baselines/2026-07-08_python_6q.json` (6 questions: R@1/R@3/R@5/MRR
+  all 100%, composite 85.3%; chunk_match 50% — python-003's GIL question
+  has no answer in this book, a genuine corpus-coverage gap, not a
+  retrieval bug, since the book covers refactoring/optimization with
+  TypeScript examples, not Python internals).
 
 These are still stubs, not working code:
 - `graph.py`, `agent.py` (unwired — nothing imports it), `mcp/compress.py`
