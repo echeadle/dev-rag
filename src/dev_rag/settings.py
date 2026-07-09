@@ -47,6 +47,14 @@ class Settings(BaseSettings):
     reranker_top_n: int = 10
     reranker_candidates: int = 50
     reranker_batch_size: int = 32
+    # Phase 5b: force_rerank (per-request override, independent of
+    # reranker_enabled) uses THIS pool size, not reranker_candidates — an
+    # interactive caller (search_all) needs the ~15s/query-at-10-candidates
+    # figure above, not the ~112s/query-at-50-candidates default pool.
+    # reranker_candidates stays operator-configurable for the deliberate,
+    # default-path reranked search; this one is a fixed, safe default for
+    # an opt-in path that must stay responsive.
+    force_rerank_candidates: int = 10
     # FBL-006 confidence gate: bge-reranker-v2-m3's CrossEncoder.predict()
     # returns a SIGMOID probability in (0,1), not a raw logit. A result whose
     # top reranker_score is below this cutoff is flagged `weak_match` (a soft

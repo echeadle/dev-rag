@@ -24,9 +24,9 @@ FTS5, BGE-M3 embeddings, bge-reranker-v2-m3, NetworkX, Docker Compose, MCP serve
   uv sync                  # resolves cleanly
   ```
 
-## Tests — the full suite is 143 (as of Slice A / FBL-006 close, 2026-07-06)
+## Tests — the full suite is 147 (as of Phase 5b close, 2026-07-09)
 ```
-uv run pytest              # expect 143 passed (116 in tests/ + 27 in mcp/tests/)
+uv run pytest              # expect 147 passed (118 in tests/ + 29 in mcp/tests/)
 ```
 The `mcp/tests/` include the fixtures/consumer-alignment tests guarding the two
 High review findings (OBS-001/002). **If a bare run reports only the `tests/`
@@ -117,6 +117,22 @@ Ingest tests never load real BGE-M3 — the model is always mocked.
   matches), a corpus-coverage gap not a retrieval bug, matching the
   devops-007 (Podman) negative-test convention rather than left as a
   silently-always-failing factual question.
+- **Phase 5b (2026-07-09):** `search_all` is now genuinely unified
+  cross-domain search, not four domain-blocks concatenated. New
+  `SearchRequest.force_rerank` (independent of `settings.reranker_enabled`
+  — ADR-012's default stays OFF) lets `search_all` specifically request
+  reranking; `mcp_server.py`'s `_handle_search_all` discovers POPULATED
+  domains via `/health` (not a hardcoded 4-way split), fans out with
+  `force_rerank: true`, and sorts the combined results by
+  `relevance_score` — valid because the reranker's cross-encoder score is
+  domain-agnostic (RRF is not: "encodes rank, not relevance").
+  **Latency correction:** tried offloading rerank to a thread so
+  concurrent per-domain calls would overlap — measured WORSE (this is
+  CPU-bound, not GIL-bound; reverted). Real cost is **~20s × populated
+  domain count** (~40-50s today at 2 domains), not a flat ~20s;
+  `SEARCH_ALL_TIMEOUT` raised to 150s. `search_devops`/`search_python`/
+  single-domain search are completely unaffected — still ~0.15s, RRF-only,
+  by default. 147 tests (was 143).
 
 These are still stubs, not working code:
 - `graph.py`, `agent.py` (unwired — nothing imports it), `mcp/compress.py`

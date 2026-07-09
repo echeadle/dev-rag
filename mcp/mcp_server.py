@@ -27,6 +27,16 @@ from mcp import types
 RAG_BASE_URL = os.getenv("DEV_RAG_BASE_URL", "http://localhost:8000")
 RAG_API_KEY = os.getenv("DEV_RAG_API_KEY", "")          # optional bearer token
 REQUEST_TIMEOUT = float(os.getenv("DEV_RAG_TIMEOUT", "30"))
+# Phase 5b: search_all's per-domain force_rerank calls are measured
+# ~20s/query at force_rerank_candidates=10 (see settings.py) — but this is
+# PER DOMAIN, not a flat cost. The server is single-process/single-threaded
+# for this CPU-bound work (measured: concurrent reranks don't overlap, they
+# compete for the same cores), so N populated domains costs roughly N × 20s
+# even though mcp_server.py fans out the HTTP calls concurrently. 150s gives
+# headroom for all 4 domains (~80-100s projected) plus real margin, since
+# search_all is explicitly a "willing to wait for quality" cross-domain
+# call, not a fast lookup.
+SEARCH_ALL_TIMEOUT = float(os.getenv("DEV_RAG_SEARCH_ALL_TIMEOUT", "150"))
 
 logging.basicConfig(
     level=logging.WARNING,
@@ -57,8 +67,8 @@ async def _get(path: str, params: dict | None = None) -> Any:
         return r.json()
 
 
-async def _post(path: str, payload: dict) -> Any:
-    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+async def _post(path: str, payload: dict, timeout: float | None = None) -> Any:
+    async with httpx.AsyncClient(timeout=timeout or REQUEST_TIMEOUT) as client:
         r = await client.post(
             f"{RAG_BASE_URL}{path}",
             headers=_build_headers(),
@@ -234,11 +244,17 @@ async def list_tools() -> list[types.Tool]:
         types.Tool(
             name="search_all",
             description=(
-                "Cross-domain semantic search across ALL corpora "
-                "(DevOps + Travel + Python + AI). Results include a domain tag "
-                "so you can see which collection each passage came from. "
-                "Use when you are unsure which domain holds the answer, "
-                "or when Argos needs to query the full knowledge base."
+                "Cross-domain semantic search across every POPULATED corpus "
+                "(currently DevOps + Python; Travel/AI join automatically once "
+                "ingested). Results are genuinely ranked together by relevance "
+                "(reranker-scored, not just per-domain lists stacked together), "
+                "and include a domain tag showing which collection each passage "
+                "came from. SLOW: roughly ~20s per populated domain (~40-50s "
+                "today with 2 domains, more as Travel/AI fill in), since it "
+                "reranks each domain for real cross-domain comparability — use "
+                "when you are unsure which domain holds the answer or need the "
+                "best answer across everything, not for routine lookups (prefer "
+                "the single-domain search_* tools for those)."
             ),
             inputSchema={
                 "type": "object",
@@ -368,37 +384,64 @@ async def _handle_domain_search(
 
 
 async def _handle_search_all(args: dict) -> list[types.TextContent]:
+    """
+    Phase 5b: true unified cross-domain ranking. There is no unified
+    POST /search route (domain is required, OBS-004 gates a real
+    cross-domain endpoint off) — instead, this fans out to only the
+    POPULATED domains (via /health, not a hardcoded 4-way list), asks
+    each for force_rerank=true results, and sorts the combined list by
+    relevance_score. This is valid because the reranker's cross-encoder
+    score is domain-agnostic (scores a (query, doc) pair directly,
+    unlike RRF which "encodes rank, not relevance" per weak_match's
+    docstring) — reranking each domain's candidates separately and then
+    sorting the union produces the same per-candidate scores as reranking
+    one combined pool would, since the cross-encoder doesn't see other
+    candidates in its batch.
+    """
     query = args["query"]
     n = min(int(args.get("n_results", 10)), 30)
 
-    # Try unified endpoint first
     try:
-        data = await _post("/search", {"query": query, "n_results": n})
-        results = data.get("results") or data.get("documents") or []
-    except httpx.HTTPStatusError:
-        # Fallback: fan-out to all four domain endpoints
-        devops_task  = _post("/search", {"query": query, "domain": "devops",  "n_results": n // 4})
-        travel_task  = _post("/search", {"query": query, "domain": "travel",  "n_results": n // 4})
-        python_task  = _post("/search", {"query": query, "domain": "python",  "n_results": n // 4})
-        ai_task      = _post("/search", {"query": query, "domain": "ai",      "n_results": n // 4})
-        devops_data, travel_data, python_data, ai_data = await asyncio.gather(
-            devops_task, travel_task, python_task, ai_task, return_exceptions=True
-        )
+        health = await _get("/health")
+    except httpx.HTTPStatusError as e:
+        return _format_error(e)
+    populated = [
+        dom for dom, parity in health.get("store_parity", {}).items()
+        if parity.get("chroma_chunks", 0) > 0
+    ]
+    if not populated:
+        return [types.TextContent(
+            type="text",
+            text=f"## Cross-domain search: \"{query}\"\n\n"
+                 "_No domains have any content ingested yet._"
+        )]
 
-        results = []
-        for d, dom in [
-            (devops_data, "devops"),
-            (travel_data, "travel"),
-            (python_data, "python"),
-            (ai_data,     "ai"),
-        ]:
-            if isinstance(d, Exception):
-                log.warning("Domain %s failed during fan-out: %s", dom, d)
-                continue
-            chunk = d.get("results") or d.get("documents") or []
-            for r in chunk:
-                r.setdefault("domain", dom)
-            results.extend(chunk)
+    per_domain_n = max(1, n // len(populated))
+    tasks = [
+        _post(
+            "/search",
+            {"query": query, "domain": dom, "n_results": per_domain_n, "force_rerank": True},
+            timeout=SEARCH_ALL_TIMEOUT,
+        )
+        for dom in populated
+    ]
+    responses = await asyncio.gather(*tasks, return_exceptions=True)
+
+    results: list = []
+    for dom, d in zip(populated, responses):
+        if isinstance(d, Exception):
+            log.warning("Domain %s failed during search_all fan-out: %s", dom, d)
+            continue
+        chunk = d.get("results") or d.get("documents") or []
+        for r in chunk:
+            r.setdefault("domain", dom)
+        results.extend(chunk)
+
+    # Reranker scores are comparable across domains (see docstring) — this
+    # sort is what makes the result genuinely "unified" rather than
+    # per-domain blocks concatenated in a fixed order.
+    results.sort(key=lambda r: r.get("relevance_score") or 0.0, reverse=True)
+    results = results[:n]
 
     text = _format_results(results)
     return [types.TextContent(

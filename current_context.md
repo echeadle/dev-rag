@@ -2,36 +2,39 @@
 _Last updated: 2026-07-09_
 
 ## Active File
-data/evaluation/python_questions.yaml, eval/baselines/2026-07-08_python_6q.json
+src/dev_rag/api.py (force_rerank), mcp/mcp_server.py (_handle_search_all),
+src/dev_rag/settings.py (force_rerank_candidates)
 
 ## Current Step
-Phase 5 (python domain) on branch `feat/phase5-python-domain`, NOT yet
-merged. Ingested Five Lines of Code under `domain=python` (532 chunks) —
-proved the multi-domain architecture needed zero code changes. First
-python eval baseline: R@1/R@3/R@5/MRR/chunk_match/composite all **100%**
-(`python-003`, the GIL question, reclassified `no_answer: true` after
-grep-verifying the book never covers it — matches the devops-007
-negative-test convention). `/health`: `python 532/532`, `devops 1495/1495`.
+Phase 5b (unified search_all ranking) on branch
+`feat/phase5b-unified-search-all`, NOT yet merged. `search_all` now
+genuinely ranks across domains (reranker score is domain-agnostic; RRF is
+not) instead of concatenating per-domain blocks. Scoped to `search_all`
+only via a new `force_rerank` request field — ADR-012's single-domain
+default (reranker OFF) is untouched, verified live (0.16s, unreranked).
+**Real-world finding, corrects the original plan:** tried offloading
+rerank to a thread so concurrent per-domain fan-out calls would overlap —
+measured WORSE (CPU-bound, not GIL-bound; reverted). `search_all`'s true
+cost is ~20s × populated domain count (~40-50s today at 2 domains), not a
+flat ~20s. Timeout and tool description updated to say so honestly.
 
 ## Next Action
-1. `uv run pytest` — expect 143 passed (regression check, no code changed).
-2. Ed reviews `docs/BRANCH-REVIEW-CHECKLIST.md`'s "Phase 5" section + merges.
+1. `uv run pytest` — expect 147 passed.
+2. Append Branch Review Checklist section + index bullet.
+3. Ed reviews + merges.
 
 ## Done When
-- [x] Book ingested, `/health` and MCP query verified live
-- [x] `expected_source`/`no_answer` populated and grep/query-verified, not guessed
-- [x] First python eval baseline saved, all metrics 100%
-- [x] Branch Review Checklist section written
+- [x] force_rerank added, scoped to search_all only, ADR-012 unaffected
+- [x] search_all discovers populated domains via /health, sorts by score
+- [x] Latency measured live and corrected honestly (not just assumed)
+- [x] 147 tests green (4 new + 3 updated)
+- [ ] Branch Review Checklist section written
 - [ ] Ed reviews + merges
 
 ## Blockers
-None on Phase 5. Parked (no active justification): structure+enrich
-(deferred 2026-07-08 — see docs/TODO.md), GraphRAG (no spec, P8),
-pgvector (P7), headroom-ai, remaining Python books (Practices of the
-Python Pro, Art of Unit Testing — owned, titles not shelf-confirmed).
-Prior closed threads (FBL-006/ADR-012, structure+enrich decision): full
-detail lives in DEV-RAG-ARCHITECTURE.md and docs/TODO.md.
+None. Parked: structure+enrich (deferred), GraphRAG (no spec, P8),
+pgvector (P7), headroom-ai, remaining Python books (titles unconfirmed).
 
 ## Phase
 Corpus: 5 books / 2027 chunks / 2 domains populated (devops, python).
-Phase 5 done pending Ed's merge — no active phase after that.
+Phase 5b done pending Ed's merge — no active phase after that.

@@ -163,21 +163,85 @@ async def test_search_travel_success():
 
 
 # ---------------------------------------------------------------------------
-# _handle_search_all
+# _handle_search_all — Phase 5b: /health-driven domain discovery,
+# force_rerank on every fan-out call, results sorted by relevance_score
+# across domains (not concatenated in a fixed order).
 # ---------------------------------------------------------------------------
+
+def _health_response(populated: dict[str, int]) -> httpx.Response:
+    """populated: {domain: chroma_chunks}. Unlisted domains default to 0."""
+    all_domains = {"devops": 0, "travel": 0, "python": 0, "ai": 0, **populated}
+    return httpx.Response(200, json={
+        "status": "ok",
+        "store_parity": {
+            dom: {"chroma_chunks": n, "sqlite_chunks": n, "in_sync": True}
+            for dom, n in all_domains.items()
+        },
+    })
+
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_search_all_unified_endpoint():
-    all_results = FAKE_RESULTS + FAKE_TRAVEL_RESULTS
-    respx.post("http://localhost:8000/search").mock(
-        return_value=httpx.Response(200, json={"results": all_results})
+async def test_search_all_only_queries_populated_domains():
+    """Only devops populated -> search_all must not call travel/python/ai."""
+    respx.get("http://localhost:8000/health").mock(
+        return_value=_health_response({"devops": 1495})
     )
-    result = await _handle_search_all({"query": "Docker and Crete"})
+    calls = []
+
+    def side_effect(request):
+        body = json.loads(request.content)
+        calls.append(body.get("domain"))
+        assert body.get("force_rerank") is True
+        return httpx.Response(200, json={"results": FAKE_RESULTS})
+
+    respx.post("http://localhost:8000/search").mock(side_effect=side_effect)
+    result = await _handle_search_all({"query": "Docker", "n_results": 8})
     text = result[0].text
     assert "Cross-domain search" in text
     assert "docker-compose.md" in text
-    assert "crete-guide.md" in text
+    assert calls == ["devops"]
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_search_all_no_populated_domains():
+    respx.get("http://localhost:8000/health").mock(
+        return_value=_health_response({})
+    )
+    result = await _handle_search_all({"query": "anything"})
+    assert "No domains have any content" in result[0].text
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_search_all_sorts_by_relevance_across_domains():
+    """A higher-scored python result must outrank a lower-scored devops one —
+    proves genuine cross-domain ranking, not domain-block concatenation."""
+    respx.get("http://localhost:8000/health").mock(
+        return_value=_health_response({"devops": 1495, "python": 532})
+    )
+
+    def side_effect(request):
+        body = json.loads(request.content)
+        domain = body.get("domain")
+        if domain == "devops":
+            # Lower score than the python result below
+            return httpx.Response(200, json={"results": [
+                {**FAKE_RESULTS[0], "relevance_score": 0.40}
+            ]})
+        elif domain == "python":
+            return httpx.Response(200, json={"results": [
+                {**FAKE_PYTHON_RESULTS[0], "relevance_score": 0.90}
+            ]})
+        return httpx.Response(500)
+
+    respx.post("http://localhost:8000/search").mock(side_effect=side_effect)
+    result = await _handle_search_all({"query": "anything", "n_results": 4})
+    text = result[0].text
+    # devops came first alphabetically/iteration-order in the old code;
+    # the higher-scored python result must now appear first in the text.
+    assert text.index("fluent-python.pdf") < text.index("docker-compose.md")
 
 
 # ---------------------------------------------------------------------------
@@ -220,18 +284,23 @@ async def test_search_python_label_in_header():
 
 
 # ---------------------------------------------------------------------------
-# _handle_search_all — updated for three domains
+# _handle_search_all — three populated domains
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
 @respx.mock
 async def test_search_all_fanout_three_domains():
-    """Fan-out should query devops, travel, AND python."""
-    call_count = {"n": 0}
+    """3 populated domains -> fan-out queries devops, travel, AND python
+    (not ai, which /health reports as empty), with budget split 3 ways."""
+    respx.get("http://localhost:8000/health").mock(
+        return_value=_health_response({"devops": 1495, "travel": 200, "python": 532})
+    )
+    calls = []
 
     def side_effect(request):
-        call_count["n"] += 1
         body = json.loads(request.content)
+        calls.append(body.get("domain"))
+        assert body.get("force_rerank") is True
         domain = body.get("domain", "")
         if domain == "devops":
             return httpx.Response(200, json={"results": FAKE_RESULTS})
@@ -245,20 +314,25 @@ async def test_search_all_fanout_three_domains():
     respx.post("http://localhost:8000/search").mock(side_effect=side_effect)
     result = await _handle_search_all({"query": "anything", "n_results": 9})
     text = result[0].text
-    # All three domains should appear in the merged results
+    # All three populated domains should appear in the merged results
     assert "docker-compose.md" in text      # devops
     assert "crete-guide.md" in text        # travel
     assert "fluent-python.pdf" in text      # python
+    # ai is unpopulated (per /health) — must not be queried at all
+    assert "ai" not in calls
+    assert sorted(calls) == ["devops", "python", "travel"]
 
 
 @pytest.mark.asyncio
 @respx.mock
 async def test_search_all_fanout_on_500():
-    """Unified /search 500 → fan-out to per-domain endpoints."""
-    call_count = {"n": 0}
+    """One populated domain's /search call 500s -> the others' results
+    still come back (per-domain failure tolerance, not a hard failure)."""
+    respx.get("http://localhost:8000/health").mock(
+        return_value=_health_response({"devops": 1495, "travel": 200, "python": 532})
+    )
 
     def side_effect(request):
-        call_count["n"] += 1
         body = json.loads(request.content)
         domain = body.get("domain", "")
         if domain == "devops":
@@ -271,7 +345,8 @@ async def test_search_all_fanout_on_500():
     respx.post("http://localhost:8000/search").mock(side_effect=side_effect)
     result = await _handle_search_all({"query": "anything"})
     text = result[0].text
-    assert "docker-compose.md" in text or "crete-guide.md" in text
+    assert "docker-compose.md" in text and "crete-guide.md" in text
+    assert "fluent-python.pdf" not in text
 
 
 # ---------------------------------------------------------------------------

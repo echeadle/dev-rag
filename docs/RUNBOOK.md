@@ -170,9 +170,14 @@ Notes:
   the reranker spec's `DEV_RAG_RERANKER_ENABLED` is wrong — use
   `RERANKER_ENABLED`. (`DEV_RAG_BASE_URL` is different: that's the MCP
   server's own variable, not a pydantic setting.)
-- First enabled startup downloads the model (~2.2 GB, one-time, cached in
-  `~/.cache/huggingface/`) and loads it eagerly in the lifespan — the
-  server doesn't answer until "Reranker loaded" appears in the log.
+- **Phase 5b (2026-07-09): the model loads eagerly at EVERY startup now**,
+  regardless of `RERANKER_ENABLED` — the server doesn't answer until
+  "Reranker loaded" appears in the log, every time. First-ever startup
+  still downloads the model (~2.2 GB, one-time, cached in
+  `~/.cache/huggingface/`); it's needed unconditionally so the MCP
+  `search_all` tool's `force_rerank` requests can use it even when
+  `RERANKER_ENABLED` (the default single-domain-search behavior, ADR-012)
+  is off.
 - Fallback is graceful (OBS-002): if the model is missing or scoring
   fails, hybrid answers in RRF order with `reranker_score: null`.
 - **FBL-006 confidence gate:** the reranker's score is a SIGMOID probability
@@ -182,7 +187,21 @@ Notes:
   e.g. `RERANKER_MIN_SCORE=0.6`. `weak_match: null` means the reranker
   didn't run (confidence unknowable). Measured 2026-07-06 (5 negatives): at
   0.5, 4/5 out-of-scope queries flag weak; only devops-027 (GitLab CI) leaks.
-- Revisit the default when Phase 4 eval quantifies the accuracy delta.
+- Revisit the ADR-012 single-domain default when Phase 4 eval quantifies
+  the accuracy delta.
+- **Phase 5b: `force_rerank` (per-request, independent of
+  `RERANKER_ENABLED`).** `POST /search` accepts `force_rerank: true` to
+  rerank one request regardless of the server-wide default — used by the
+  MCP `search_all` tool for genuine cross-domain ranking (RRF scores
+  aren't comparable across domains; reranker scores are). Uses a smaller
+  pool (`settings.force_rerank_candidates`, default 10) than the
+  operator-configured `RERANKER_CANDIDATES`, to stay in the ~20s/query
+  range rather than the ~112s/query the default pool of 50 costs.
+  **`search_all` costs ~20s × populated domain count** (not a flat ~20s —
+  concurrent per-domain reranks were measured to serialize, not overlap,
+  on this single-process CPU-bound server); `search_devops`/
+  `search_python`/other single-domain tools are completely unaffected,
+  still ~0.15s RRF-only by default.
 
 ## 5c. Run the evaluation harness (Phase 4)
 
