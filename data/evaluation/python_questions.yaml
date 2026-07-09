@@ -26,14 +26,24 @@
 - id: python-003
   question: "How does the GIL affect CPU-bound versus I/O-bound concurrency in Python?"
   domain: python
-  category: architecture
-  failure_mode: single_concept_bias
+  category: negative
+  failure_mode: hallucination_via_retrieval
+  # Reclassified 2026-07-08 (code review, Phase 5): was a factual question
+  # with expected_chunk_contains: [GIL], but Five Lines of Code (the only
+  # ingested python-domain content) is refactoring/optimization-focused
+  # with TypeScript examples and never mentions the GIL — grep-verified
+  # absent (0 matches, case-insensitive, word-boundary). Reclassified as a
+  # negative test, matching the devops-007 (Podman) convention.
   expected_source: null
-  expected_chunk_contains:
-    - "GIL"
-  no_answer: false
+  expected_chunk_contains: []
+  no_answer: true
   requires_graph: false
   requires_multi_source: false
+  notes: >
+    Negative test — the GIL is not covered by the current python-domain
+    corpus (verified: 0 matches for "GIL" anywhere in
+    data/chunks/five_lines_of_code_chunks.json). Re-open as a factual
+    question once a Python-internals book is ingested.
 
 # ---------------------------------------------------------------------------
 # REFACTORING (python-004, python-005, python-006)
@@ -46,9 +56,12 @@
   domain: python
   category: factual
   failure_mode: basic_semantic_mismatch
-  # OBS-003 (2026-07-06): was placeholder "five-lines-of-code.pdf" — that book
-  # is NOT ingested. Set to the exact ingested filename when it is.
-  expected_source: null
+  # OBS-003 resolved 2026-07-08: Five Lines of Code ingested (Phase 5,
+  # domain=python, 532 chunks). expected_source verified against real
+  # chunk text (data/chunks/five_lines_of_code_chunks.json) and a live
+  # search_python query — top hit is the book's own "Rule: FIVE LINES"
+  # section (p25), not guessed from the title.
+  expected_source: "Five_Lines_of_Code.pdf"
   expected_chunk_contains:
     - "five"
   no_answer: false
@@ -57,15 +70,17 @@
   notes: >
     Core concept from Five Lines of Code (Clausen). If this doesn't
     retrieve a clear explanation of the rule and its rationale, basic
-    retrieval from this book is broken. Update expected_source to match
-    actual ingested filename.
+    retrieval from this book is broken.
 
 - id: python-005
   question: "When should you extract a method versus keeping code inline and what are the tradeoffs?"
   domain: python
   category: architecture
   failure_mode: description_vs_decision_support
-  expected_source: null
+  # OBS-003 resolved 2026-07-08: verified "EXTRACT METHOD" (exact case)
+  # appears 42x in the ingested chunk text — this is a named refactoring
+  # pattern the book covers directly.
+  expected_source: "Five_Lines_of_Code.pdf"
   expected_chunk_contains: []
   no_answer: false
   requires_graph: false
@@ -79,7 +94,10 @@
   domain: python
   category: troubleshooting
   failure_mode: symptom_without_cause
-  expected_source: null
+  # OBS-003 resolved 2026-07-08: verified via live search_python query —
+  # top hit is the book's "Rule: NEVER USE IF WITH ELSE" section (p44-45),
+  # directly on-topic, not guessed.
+  expected_source: "Five_Lines_of_Code.pdf"
   expected_chunk_contains: []
   no_answer: false
   requires_graph: false

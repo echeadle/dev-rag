@@ -23,6 +23,11 @@ bottom of this file, in the same commit. Docs-only changes are exempt.
   that reopened ADR-012.
 - **Eval RLA positive** (feat/eval-rla-positive): see "Eval RLA Positive
   Review" at the bottom — adds devops-034, closes the added-value blind spot.
+- **Slice A / FBL-006** (feat/fbl006-negative-gating): see "Slice A — FBL-006
+  Negative Gating" — negative-gating units-bug fix + reranker default decision.
+- **Phase 5 / Python domain** (feat/phase5-python-domain): see "Phase 5 —
+  Python Domain" at the bottom — second domain populated for the first
+  time, no pipeline code changes, first python eval baseline.
 
 ## Steps (generic + Phase 3 example)
 
@@ -424,6 +429,94 @@ would false-reject real positives).
    Note: the ADR-012 reranker-default decision stays OFF pending your call —
    the reopen data (R@3 +7.7, neg precision 80%) is now clean, weighed against
    ~100× latency and the one residual near-domain leak.
+
+---
+
+# Phase 5 — Python Domain (feat/phase5-python-domain)
+
+**What this review verifies.** The corpus was 100% DevOps; `python`,
+`travel`, and `ai` domains were empty. Phase 5's goal was to prove the
+multi-domain architecture works with a second real, populated domain —
+not just mechanically accept a `domain` parameter. Investigation before
+writing any plan confirmed the architecture was **already fully generic**
+(per-domain ChromaDB collections created dynamically at ingest time,
+domain-scoped SQLite/FTS5 filtering, domain-agnostic `/search` and
+`search_python` MCP tool, domain-driven `/health`). **This branch changes
+zero pipeline/retrieval/API code** — it's a content ingest + eval-fixture
+update, reusing the exact pipeline invocation pattern already proven on
+the 4 DevOps books.
+
+**Book:** *Five Lines of Code* (Clausen) — 338 pages, 532 chunks, avg 1493
+chars. Ed confirmed this over the other two owned candidates (Practices of
+the Python Pro, Art of Unit Testing) because `data/evaluation/
+python_questions.yaml` already had 3 questions (python-004/005/006)
+pre-written against it, with an OBS-003 note waiting for ingestion.
+
+**What "pass" looks like.** 143 green (no pipeline code changed — this is
+a regression check, not new coverage). `/health` shows `python: 532/532
+in_sync: true`, `devops` unaffected at 1495. Live `search_python` MCP
+query returns real book content. First python eval baseline
+(`eval/baselines/2026-07-08_python_6q.json`, 6 questions): R@1/R@3/R@5/MRR/
+chunk_match/composite all **100%**. `python-003` (the GIL question) is
+reclassified `no_answer: true` rather than a normal factual question —
+grep-verified the book (refactoring/optimization, **TypeScript** examples,
+not Python internals) never mentions the GIL, matching the devops-007
+(Podman) negative-test convention instead of silently failing chunk_match
+forever with no marker distinguishing an expected gap from a regression.
+
+## Steps
+
+1. `git checkout feat/phase5-python-domain`
+2. `git diff main --stat` — expect **5 tracked files changed**:
+   `data/evaluation/python_questions.yaml` (expected_source populated for
+   3 questions), `docs/TODO.md`, `CLAUDE.md`, `current_context.md`, this
+   file. Plus one **new tracked file**: `eval/baselines/
+   2026-07-08_python_6q.json`. Note: the PDF itself and all pipeline
+   artifacts (`data/raw/`, `data/cleaned/`, `data/chunks/`,
+   `data/embeddings/` for `five_lines_of_code`) are gitignored — same as
+   every existing book — so they won't appear in the diff at all. They
+   already exist locally on this machine from the ingest run; the health
+   check and eval steps below verify them without needing to re-ingest.
+   **No `src/` or `mcp/` files should appear in the diff** — confirms no
+   pipeline code changed.
+3. **Confirm `expected_source` was verified, not guessed.**
+   `git diff main -- data/evaluation/python_questions.yaml` — each of
+   python-004/005/006 has a comment citing what was actually checked
+   (real chunk text grep, or a live `search_python` query result), per
+   the repo's standing rule against guessing `expected_source` from titles.
+   `python-003` has a comment too, citing the grep that verified "GIL"
+   is genuinely absent (0 matches) before reclassifying it `no_answer: true`.
+4. `uv run pytest` — expect **143 passed** (unchanged from before this
+   branch — confirms no regression from the new domain's data).
+5. **Reproduce the health check:**
+   ```bash
+   uv run uvicorn dev_rag.api:app --host 127.0.0.1 --port 8000   # terminal 1
+   curl -s localhost:8000/health | python3 -m json.tool            # terminal 2
+   ```
+   — expect `python.chroma_chunks == python.sqlite_chunks == 532`,
+   `in_sync: true`, `devops` still `1495/1495`, `stores_in_sync: true`.
+6. **Reproduce the python eval baseline:**
+   ```bash
+   uv run python eval/run_eval.py --domain python --no-save \
+       --compare eval/baselines/2026-07-08_python_6q.json   # same terminal 2
+   ```
+   — expect R@1/R@3/R@5/MRR/chunk_match/composite all 100%, +0.0% deltas
+   vs the baseline. Ctrl-C the server (terminal 1).
+7. **Optional live spot-check via MCP** (from a Claude Code session with
+   the dev-rag MCP server registered): ask `search_python` "What is the
+   five-line rule and why does limiting function length improve code
+   quality?" — expect the top hit to be from `Five_Lines_of_Code.pdf`,
+   quoting the book's actual "Rule: FIVE LINES" section.
+8. If satisfied:
+   ```bash
+   git checkout main
+   git merge --no-ff feat/phase5-python-domain
+   git push origin main
+   ```
+   Note: `python-001/002/003` (generic Python questions) intentionally stay
+   `expected_source: null` — they were never gated on this specific book,
+   and python-003's GIL question genuinely isn't answerable by it. That's
+   not a defect to chase inside this branch.
 
 ---
 
