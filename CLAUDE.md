@@ -150,6 +150,27 @@ Ingest tests never load real BGE-M3 — the model is always mocked.
   `SEARCH_ALL_TIMEOUT` raised to 150s. `search_devops`/`search_python`/
   single-domain search are completely unaffected — still ~0.15s, RRF-only,
   by default. 147 tests (was 143).
+- **Mastering Ansible ingest (2026-07-09, `feat/ingest-mastering-ansible`):**
+  5th DevOps book, no pipeline code changes. 577 chunks (540 pages, 525
+  kept post-clean); `devops` domain now 2072/2072 in_sync, `python`
+  unaffected at 532. Stage-8 verify needed a second, more distinctive
+  query on the first attempt — the initial query scored top-5 entirely
+  from `ansible-for-real-life-automation.pdf` (data loaded fine; only the
+  smoke-test query was too generic for a domain with 5 competing Ansible
+  books). Re-verified with a "Vault IDs" query (44 mentions in this book
+  vs. 1 passing mention in RLA) — passed, dist=0.235. **Existing negative
+  tests re-checked empirically, not assumed:** this book adds real,
+  multi-chunk Podman content (ansible-bender container builds, 18
+  mentions) that could plausibly have broken `devops-007`'s Podman
+  negative test — verified live via `/search` that it does not crack the
+  top 10 for that query; the incidental RLA asides still rank higher.
+  GitLab CI / Istio / Pulumi negatives unaffected (0 mentions,
+  grep-verified). New official baseline
+  `eval/baselines/2026-07-09_hybrid_rrf_5books_39q.json`: R@1 84.6%
+  (unchanged), **R@3 92.3→96.2% (+3.8)**, MRR 89.4→89.7 (+0.3), composite
+  88.3→90.0 (+1.7) — the 5th book added coverage without eroding anything.
+  The one failure (`devops-020`) is the pre-existing, already-documented
+  Ansible-source-competition issue, not a new regression.
 
 These are still stubs, not working code:
 - `graph.py`, `agent.py` (unwired — nothing imports it), `mcp/compress.py`

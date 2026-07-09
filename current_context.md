@@ -2,38 +2,41 @@
 _Last updated: 2026-07-09_
 
 ## Active File
-src/dev_rag/api.py (force_rerank), mcp/mcp_server.py (_handle_search_all),
-src/dev_rag/settings.py (force_rerank_candidates)
+data/books/MASTERING_ANSIBLE.pdf ingest (no source code touched — pure
+data addition), docs/TODO.md, CLAUDE.md, eval/baselines/.
 
 ## Current Step
-Phase 5b (unified search_all ranking) on branch
-`feat/phase5b-unified-search-all`, NOT yet merged. `search_all` now
-genuinely ranks across domains (reranker score is domain-agnostic; RRF is
-not) instead of concatenating per-domain blocks. Scoped to `search_all`
-only via a new `force_rerank` request field — ADR-012's single-domain
-default (reranker OFF) is untouched, verified live (0.16s, unreranked).
-**Real-world finding, corrects the original plan:** tried offloading
-rerank to a thread so concurrent per-domain fan-out calls would overlap —
-measured WORSE (CPU-bound, not GIL-bound; reverted). `search_all`'s true
-cost is ~20s × populated domain count (~40-50s today at 2 domains), not a
-flat ~20s. Timeout and tool description updated to say so honestly.
+Ingested Mastering Ansible (5th DevOps book) on branch
+`feat/ingest-mastering-ansible`, NOT yet merged. 577 chunks, 540 pages
+(525 kept), `devops` domain now 2072/2072 in_sync, `python` unaffected
+at 532. Stage-8 verify needed a second, more distinctive query after the
+first attempt scored entirely from a competing Ansible book (data was
+fine, query was too generic). Re-verified existing negative tests live
+(not assumed) — this book's substantial Podman/ansible-bender content
+does not break `devops-007`. New baseline
+`eval/baselines/2026-07-09_hybrid_rrf_5books_39q.json`: R@3 92.3→96.2%
+(+3.8), MRR +0.3, composite +1.7 — pure gain, no erosion.
 
 ## Next Action
-Ed reviews via docs/BRANCH-REVIEW-CHECKLIST.md ("Phase 5b — Unified
-search_all Ranking" section, 9 steps) and merges.
+1. Write Branch Review Checklist section (ingest-style, lighter than a
+   code-change section — see "Fourth-Book Ingest Review" for the pattern).
+2. Ed reviews + merges.
 
 ## Done When
-- [x] force_rerank added, scoped to search_all only, ADR-012 unaffected
-- [x] search_all discovers populated domains via /health, sorts by score
-- [x] Latency measured live and corrected honestly (not just assumed)
-- [x] 147 tests green (4 new + 3 updated)
-- [x] Branch Review Checklist section written
+- [x] Mastering Ansible ingested, corpus parity confirmed (2072/2072/2072)
+- [x] Stage-8 verify passing with a genuinely distinctive query
+- [x] Existing negative tests (Podman, GitLab CI, Istio, Pulumi) re-checked live
+- [x] New 5-book eval baseline promoted, no regressions
+- [x] 147 tests still green (no code changed)
+- [ ] Branch Review Checklist section written
 - [ ] Ed reviews + merges
 
 ## Blockers
 None. Parked: structure+enrich (deferred), GraphRAG (no spec, P8),
-pgvector (P7), headroom-ai, remaining Python books (titles unconfirmed).
+pgvector (P7), headroom-ai, remaining Ansible/Python/AI-domain books
+(titles unconfirmed or not yet ingested).
 
 ## Phase
-Corpus: 5 books / 2027 chunks / 2 domains populated (devops, python).
-Phase 5b done pending Ed's merge — no active phase after that.
+Corpus: 6 books / 2604 chunks / 2 domains populated (devops, python).
+No active implementation phase — corpus-building track, between Phase
+5b (done) and whichever phase/book comes next.
