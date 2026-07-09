@@ -102,18 +102,21 @@ Ingest tests never load real BGE-M3 — the model is always mocked.
   `_reranker_c10_4books_39q.json`: gated reranker gives neg precision 0→80%
   (4/5) with R@1 96.2 / R@3 100. Residual leak devops-027 (GitLab CI). The
   ADR-012 reranker-default decision is still Ed's (reopen data + latency).
-- **Phase 5 (2026-07-08):** first second domain populated — `python` domain
+- **Phase 5 (2026-07-08):** second domain populated for the first time —
+  `python` domain
   ingested (Five Lines of Code, Clausen: 532 chunks, 338 pages). No pipeline
   code changes needed — domain routing (ChromaDB per-domain collections,
   SQLite `domain` column filtering, `/search`, `/health`, MCP
   `search_python`) was already fully generic; this proved it end-to-end
   with real data. `/health` confirms `python: 532/532 in_sync`, `devops`
   unaffected at 1495. First python-domain eval baseline:
-  `eval/baselines/2026-07-08_python_6q.json` (6 questions: R@1/R@3/R@5/MRR
-  all 100%, composite 85.3%; chunk_match 50% — python-003's GIL question
-  has no answer in this book, a genuine corpus-coverage gap, not a
-  retrieval bug, since the book covers refactoring/optimization with
-  TypeScript examples, not Python internals).
+  `eval/baselines/2026-07-08_python_6q.json` (6 questions: R@1/R@3/R@5/MRR/
+  chunk_match/composite all **100%**). python-003 (GIL question) was
+  reclassified `no_answer: true` — the book (refactoring/optimization,
+  TypeScript examples) genuinely never mentions the GIL (grep-verified: 0
+  matches), a corpus-coverage gap not a retrieval bug, matching the
+  devops-007 (Podman) negative-test convention rather than left as a
+  silently-always-failing factual question.
 
 These are still stubs, not working code:
 - `graph.py`, `agent.py` (unwired — nothing imports it), `mcp/compress.py`

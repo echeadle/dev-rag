@@ -26,8 +26,8 @@ bottom of this file, in the same commit. Docs-only changes are exempt.
 - **Slice A / FBL-006** (feat/fbl006-negative-gating): see "Slice A — FBL-006
   Negative Gating" — negative-gating units-bug fix + reranker default decision.
 - **Phase 5 / Python domain** (feat/phase5-python-domain): see "Phase 5 —
-  Python Domain" at the bottom — first second domain populated, no pipeline
-  code changes, first python eval baseline.
+  Python Domain" at the bottom — second domain populated for the first
+  time, no pipeline code changes, first python eval baseline.
 
 ## Steps (generic + Phase 3 example)
 
@@ -456,12 +456,13 @@ pre-written against it, with an OBS-003 note waiting for ingestion.
 a regression check, not new coverage). `/health` shows `python: 532/532
 in_sync: true`, `devops` unaffected at 1495. Live `search_python` MCP
 query returns real book content. First python eval baseline
-(`eval/baselines/2026-07-08_python_6q.json`, 6 questions): R@1/R@3/R@5/MRR
-all **100%**, composite **85.3%**. chunk_match is the one metric below
-target (50% vs 70%) — this is `python-003` (the GIL question) finding no
-answer, a genuine corpus-coverage gap (this book covers refactoring/
-optimization with **TypeScript** examples, not Python internals — verified
-live, not guessed), not a retrieval defect.
+(`eval/baselines/2026-07-08_python_6q.json`, 6 questions): R@1/R@3/R@5/MRR/
+chunk_match/composite all **100%**. `python-003` (the GIL question) is
+reclassified `no_answer: true` rather than a normal factual question —
+grep-verified the book (refactoring/optimization, **TypeScript** examples,
+not Python internals) never mentions the GIL, matching the devops-007
+(Podman) negative-test convention instead of silently failing chunk_match
+forever with no marker distinguishing an expected gap from a regression.
 
 ## Steps
 
@@ -483,6 +484,8 @@ live, not guessed), not a retrieval defect.
    python-004/005/006 has a comment citing what was actually checked
    (real chunk text grep, or a live `search_python` query result), per
    the repo's standing rule against guessing `expected_source` from titles.
+   `python-003` has a comment too, citing the grep that verified "GIL"
+   is genuinely absent (0 matches) before reclassifying it `no_answer: true`.
 4. `uv run pytest` — expect **143 passed** (unchanged from before this
    branch — confirms no regression from the new domain's data).
 5. **Reproduce the health check:**
@@ -497,8 +500,8 @@ live, not guessed), not a retrieval defect.
    uv run python eval/run_eval.py --domain python --no-save \
        --compare eval/baselines/2026-07-08_python_6q.json   # same terminal 2
    ```
-   — expect R@1/R@3/R@5/MRR 100%, chunk_match 50%, composite 85.3%,
-   +0.0% deltas vs the baseline. Ctrl-C the server (terminal 1).
+   — expect R@1/R@3/R@5/MRR/chunk_match/composite all 100%, +0.0% deltas
+   vs the baseline. Ctrl-C the server (terminal 1).
 7. **Optional live spot-check via MCP** (from a Claude Code session with
    the dev-rag MCP server registered): ask `search_python` "What is the
    five-line rule and why does limiting function length improve code

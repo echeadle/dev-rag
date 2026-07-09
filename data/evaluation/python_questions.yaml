@@ -26,14 +26,24 @@
 - id: python-003
   question: "How does the GIL affect CPU-bound versus I/O-bound concurrency in Python?"
   domain: python
-  category: architecture
-  failure_mode: single_concept_bias
+  category: negative
+  failure_mode: hallucination_via_retrieval
+  # Reclassified 2026-07-08 (code review, Phase 5): was a factual question
+  # with expected_chunk_contains: [GIL], but Five Lines of Code (the only
+  # ingested python-domain content) is refactoring/optimization-focused
+  # with TypeScript examples and never mentions the GIL — grep-verified
+  # absent (0 matches, case-insensitive, word-boundary). Reclassified as a
+  # negative test, matching the devops-007 (Podman) convention.
   expected_source: null
-  expected_chunk_contains:
-    - "GIL"
-  no_answer: false
+  expected_chunk_contains: []
+  no_answer: true
   requires_graph: false
   requires_multi_source: false
+  notes: >
+    Negative test — the GIL is not covered by the current python-domain
+    corpus (verified: 0 matches for "GIL" anywhere in
+    data/chunks/five_lines_of_code_chunks.json). Re-open as a factual
+    question once a Python-internals book is ingested.
 
 # ---------------------------------------------------------------------------
 # REFACTORING (python-004, python-005, python-006)
@@ -67,9 +77,9 @@
   domain: python
   category: architecture
   failure_mode: description_vs_decision_support
-  # OBS-003 resolved 2026-07-08: verified "EXTRACT METHOD" appears 46x in
-  # the ingested chunk text — this is a named refactoring pattern the book
-  # covers directly.
+  # OBS-003 resolved 2026-07-08: verified "EXTRACT METHOD" (exact case)
+  # appears 42x in the ingested chunk text — this is a named refactoring
+  # pattern the book covers directly.
   expected_source: "Five_Lines_of_Code.pdf"
   expected_chunk_contains: []
   no_answer: false

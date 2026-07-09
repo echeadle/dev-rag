@@ -58,11 +58,11 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
   query confirmed real content; `expected_source` populated for
   python-004/005/006 (verified against real chunk text, not guessed).
   First python baseline: `eval/baselines/2026-07-08_python_6q.json`
-  (R@1/R@3/R@5/MRR 100%, composite 85.3%). chunk_match 50%: python-003
-  (GIL question) has no answer in this book — a genuine coverage gap
-  (the book is refactoring/optimization-focused with TypeScript examples,
-  not Python internals), not a retrieval defect. python-001/002/003 stay
-  `expected_source: null` — they were never gated on this specific book.
+  (R@1/R@3/R@5/MRR/chunk_match/composite all **100%**). python-003 (GIL
+  question) reclassified `no_answer: true` — grep-verified the book
+  (refactoring/optimization-focused, TypeScript examples) never mentions
+  the GIL, matching the devops-007 (Podman) negative-test convention.
+  python-001/002 stay `expected_source: null` — never gated on this book.
 - [ ] **Phase 5b** — Unified search_all ranking via reranker
   - [ ] Review `search_all` result budget (found in MCP smoke test 2026-07-05):
     the MCP fan-out fallback splits `n_results // 4` across domains
@@ -246,10 +246,10 @@ Books and sources to ingest as the system comes online:
 - [ ] Ingest order: Bourne first (already owned), then Rothman, then Kimothi,
   then Stable Diffusion when Oryx Pro is set up
 - [x] Five Lines of Code (Clausen) — ✅ ingested 2026-07-08 (Phase 5, 532
-  chunks). Correction: code examples are **TypeScript, not Python** (the
-  "with Python examples" note above was wrong — verified against real
-  ingested content); the refactoring rules/principles apply language-
-  agnostically, same as Art of Unit Testing's JS examples below.
+  chunks). Correction: code examples are **TypeScript, not Python**
+  (this entry previously said "with Python examples" — verified wrong
+  against real ingested content); the refactoring rules/principles apply
+  language-agnostically, same as Art of Unit Testing's JS examples below.
 - [ ] Confirm remaining Python book titles from shelf (Practices of the
   Python Pro / Art of Unit Testing, both already owned — see below)
 - [ ] Practices of the Python Pro (Hillard, Manning) — **already owned**;
