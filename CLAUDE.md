@@ -15,6 +15,23 @@ correctness at that scale; **do not introduce enterprise patterns.**
 Stack: Python 3.12, FastAPI, Pydantic AI, ChromaDB (→ pgvector planned), SQLite
 FTS5, BGE-M3 embeddings, bge-reranker-v2-m3, NetworkX, Docker Compose, MCP server.
 
+## Self-learning
+When I correct you, or you catch yourself making a mistake: before continuing add the lesson as a 
+one-line rule under ## Lessons, so it never happens again.
+
+## Lessons
+
+- (Claude adds rules here)
+- Check in on context usage at natural checkpoints (end of a merged
+  branch, before starting a new plan/phase) — don't let a long,
+  tool-heavy session (many subagent spawns, file reads, background tasks)
+  run past ~50-60% without proactively suggesting `/compact` or `/clear`.
+  Reason: 2026-07-09 session hit 68% usage / 81% of work done above 150k
+  context before Ed had to flag it via `/usage` himself — cost and quality
+  both degrade in that territory, and I have no way to measure it
+  precisely mid-session, so the fix is proactively asking, not waiting to
+  notice.
+
 ## Toolchain — uv only
 - **Use `uv` exclusively. Never call `pip` directly.** Use `uv run …`, `uv add …`,
   `uv sync`.
