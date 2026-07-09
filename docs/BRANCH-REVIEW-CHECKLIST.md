@@ -32,6 +32,10 @@ bottom of this file, in the same commit. Docs-only changes are exempt.
   "Phase 5b — Unified search_all Ranking" at the bottom — force_rerank
   scoped to search_all only, genuine cross-domain score sorting, and a
   live-measured latency correction to the original plan.
+- **Mastering Ansible ingest** (feat/ingest-mastering-ansible): see
+  "Mastering Ansible Ingest Review" at the bottom — 5th DevOps book, a
+  stage-8 verify-query retry, and live re-verification that the new
+  book's Podman content doesn't crack an existing negative test.
 
 ## Steps (generic + Phase 3 example)
 
@@ -629,6 +633,98 @@ respawn them) before trusting a live MCP test.
    git merge --no-ff feat/phase5b-unified-search-all
    git push origin main
    ```
+
+---
+
+# Mastering Ansible Ingest Review (feat/ingest-mastering-ansible)
+
+**What this review verifies.** This branch ingests the 5th DevOps book
+(Mastering Ansible, Freeman) — completing the Ansible trilogy (learn →
+apply → master) alongside Ansible for DevOps and Ansible for Real-Life
+Automation. **No code change** — the corpus itself (chunks/embeddings/
+ChromaDB/SQLite) is gitignored and lives in your local stores from the
+ingest run; the tracked edits are a new eval baseline JSON and three doc
+updates (CLAUDE.md, current_context.md, docs/TODO.md). So, like prior
+ingest branches, this is a review of *data and measurement integrity*.
+
+Two things worth double-checking beyond the routine parity check. First,
+**the stage-8 verify query needed a retry**: my first attempt ("How do
+you write a custom Ansible module in Python?") scored its entire top-5
+from `ansible-for-real-life-automation.pdf`, not the new book — the data
+had loaded correctly (parity 2072/2072/2072), the query just wasn't
+distinctive enough for a domain with three competing Ansible books. I
+re-verified with a "Vault IDs" query (44 mentions in this book vs. one
+passing mention in RLA) and it passed cleanly. Second, **this book adds
+real Podman content** — an 18-mention `ansible-bender` section on
+building containers with Podman/Buildah, more substantial than the other
+books' brief asides — which could plausibly have broken the
+`devops-007` Podman negative-test question. I checked this live (not by
+assumption): the new book's Podman content does not crack the top 10 for
+that question; the existing incidental RLA hits still rank higher.
+GitLab CI / Istio / Pulumi negatives are unaffected by construction (0
+mentions, grep-verified).
+
+**What "pass" looks like.** 147 tests still green (no code changed).
+Health shows devops 2072/2072 in sync, python unaffected at 532. The RRF
+eval reproduces R@1 84.6%, R@3 96.2%, MRR 89.7%, composite 90.0% — R@3
+and composite both **improved** over the 4-book baseline (+3.8 and +1.7
+respectively), with only one failure (`devops-020`), which is the
+pre-existing, already-documented Ansible source-competition issue (not
+new).
+
+## Steps
+
+1. `git checkout feat/ingest-mastering-ansible`
+2. `git diff main --stat` — expect **4 files changed, no code**: the new
+   baseline `eval/baselines/2026-07-09_hybrid_rrf_5books_39q.json`
+   (untracked → added) and three doc updates (`CLAUDE.md`,
+   `current_context.md`, `docs/TODO.md`). Anything under `src/`, `mcp/`,
+   `tests/`, or `eval/*.py` in the stat is unexpected — stop and ask why.
+3. `uv run pytest` — expect **147 passed** (unchanged from Phase 5b —
+   confirms no code drifted).
+4. Confirm the corpus loaded at parity (no re-ingest needed):
+   ```bash
+   sqlite3 data/dev_rag.db \
+     "SELECT domain, count(*) FROM chunks WHERE status='active' GROUP BY domain;
+      SELECT 'fts', count(*) FROM chunks_fts;"
+   ```
+   — expect `devops|2072`, `python|532`, `fts|2604`.
+5. Confirm the new book is queryable (verify stage against the live stores):
+   ```bash
+   uv run python -m dev_rag.ingest.pipeline \
+       --source data/books/MASTERING_ANSIBLE.pdf \
+       --domain devops --start-stage 8 \
+       --query "How do you use Vault IDs to manage multiple Ansible Vault passwords?"
+   ```
+   — expect `[8 verify] parity OK (2072); top hit mastering_ansible_...`
+   (a Mastering Ansible chunk in the top-5, low distance).
+6. Start the server with defaults:
+   ```bash
+   uv run uvicorn dev_rag.api:app --host 127.0.0.1 --port 8000
+   ```
+7. In a second terminal — reproduce the RRF baseline (deterministic):
+   ```bash
+   uv run python eval/run_eval.py --domain devops --no-save \
+       --compare eval/baselines/2026-07-06_hybrid_rrf_4books_39q.json
+   ```
+   — expect R@1 84.6% (+0.0), R@3 96.2% (+3.8), MRR 89.7% (+0.3),
+   composite 90.0% (+1.7), one failure: `devops-020` (pre-existing,
+   Ansible source competition — not new).
+8. OPTIONAL — spot-check the Podman negative directly:
+   ```bash
+   curl -s -X POST localhost:8000/search -H "Content-Type: application/json" \
+       -d '{"query": "What are the best practices for managing Podman rootless containers in production?", "domain": "devops", "n_results": 10}' \
+       | python3 -c "import json,sys; [print(r['source']) for r in json.load(sys.stdin)['results']]"
+   ```
+   — expect all 10 sources to be `ansible-for-real-life-automation.pdf` /
+   `ansible-for-devops.pdf` (never `MASTERING_ANSIBLE.pdf`).
+9. Ctrl-C the server.
+10. If satisfied:
+    ```bash
+    git checkout main
+    git merge --no-ff feat/ingest-mastering-ansible
+    git push origin main
+    ```
 
 ---
 

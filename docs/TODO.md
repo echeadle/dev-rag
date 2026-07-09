@@ -232,10 +232,21 @@ Books and sources to ingest as the system comes online:
   (devops-020 image-push, devops-para-001b secrets paraphrase), recorded not
   fixed. **This R@3 drop reopened the reranker question** — see FBL-006 and
   ADR-012 below.
-- [ ] Mastering Ansible, 4th Edition (Freeman, Packt 2021) — **already owned**;
-  advanced internals, Python extensions, collections, Vault secrets,
-  debugging and error recovery; completes the Ansible trilogy —
-  learn → apply → master
+- [x] Mastering Ansible, 4th Edition (Freeman, Packt 2021) — ✅ 2026-07-09
+  (`feat/ingest-mastering-ansible`): 577 chunks, 540 pages (525 kept),
+  corpus parity 2072/2072/2072. Completes the Ansible trilogy — learn
+  (for DevOps) → apply (Real-Life Automation) → master. Stage-8 verify
+  needed a re-run with a more distinctive query ("Vault IDs", 44
+  mentions vs. RLA's 1 passing mention) after the first attempt's query
+  scored entirely from RLA's competing content — data was fine, only the
+  smoke-test query was too generic. Re-verified existing negatives live
+  (not assumed): this book's substantial ansible-bender/Podman container
+  section (18 mentions) does not crack the top-10 for the `devops-007`
+  Podman negative question. New baseline
+  `eval/baselines/2026-07-09_hybrid_rrf_5books_39q.json`: R@1 84.6%
+  (flat), R@3 92.3→96.2% (+3.8), MRR +0.3, composite +1.7 — pure gain,
+  no erosion. `devops-020`'s one failure is the pre-existing documented
+  source-competition issue, unrelated to this ingest.
 - [ ] Additional Ansible book(s) — confirm titles from shelf
 - [ ] Mastering Ubuntu Server, 4th Edition (LaCroix, Packt 2024) — **already owned**;
   covers Ubuntu 22.04 LTS, server administration, Ansible automation, container
