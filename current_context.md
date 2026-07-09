@@ -19,16 +19,15 @@ cost is ~20s × populated domain count (~40-50s today at 2 domains), not a
 flat ~20s. Timeout and tool description updated to say so honestly.
 
 ## Next Action
-1. `uv run pytest` — expect 147 passed.
-2. Append Branch Review Checklist section + index bullet.
-3. Ed reviews + merges.
+Ed reviews via docs/BRANCH-REVIEW-CHECKLIST.md ("Phase 5b — Unified
+search_all Ranking" section, 9 steps) and merges.
 
 ## Done When
 - [x] force_rerank added, scoped to search_all only, ADR-012 unaffected
 - [x] search_all discovers populated domains via /health, sorts by score
 - [x] Latency measured live and corrected honestly (not just assumed)
 - [x] 147 tests green (4 new + 3 updated)
-- [ ] Branch Review Checklist section written
+- [x] Branch Review Checklist section written
 - [ ] Ed reviews + merges
 
 ## Blockers
