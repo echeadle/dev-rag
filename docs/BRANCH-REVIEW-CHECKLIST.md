@@ -28,6 +28,10 @@ bottom of this file, in the same commit. Docs-only changes are exempt.
 - **Phase 5 / Python domain** (feat/phase5-python-domain): see "Phase 5 —
   Python Domain" at the bottom — second domain populated for the first
   time, no pipeline code changes, first python eval baseline.
+- **Phase 5b / Unified search_all** (feat/phase5b-unified-search-all): see
+  "Phase 5b — Unified search_all Ranking" at the bottom — force_rerank
+  scoped to search_all only, genuine cross-domain score sorting, and a
+  live-measured latency correction to the original plan.
 
 ## Steps (generic + Phase 3 example)
 
@@ -517,6 +521,114 @@ forever with no marker distinguishing an expected gap from a regression.
    `expected_source: null` — they were never gated on this specific book,
    and python-003's GIL question genuinely isn't answerable by it. That's
    not a defect to chase inside this branch.
+
+---
+
+# Phase 5b — Unified search_all Ranking (feat/phase5b-unified-search-all)
+
+**What this review verifies.** `_handle_search_all` in `mcp/mcp_server.py`
+had two real problems: its "try unified endpoint first" call was dead
+code (`/search` requires `domain`, always 422s), and its fallback split
+`n_results // 4` evenly across all 4 hardcoded domains regardless of
+population, then just concatenated each domain's own sorted results in a
+fixed order — not a real cross-domain ranking. RRF scores aren't
+comparable across domains (they "encode rank, not relevance," per the
+`weak_match` docstring), so fixing this required the reranker, whose
+cross-encoder score *is* domain-agnostic. Ed's call: scope this to
+`search_all` only, not a global ADR-012 reversal — a new `force_rerank`
+field on `SearchRequest`, independent of `settings.reranker_enabled`,
+lets `search_all` opt in while `search_devops`/`search_python`/etc. stay
+fast and RRF-only by default.
+
+**A real finding changed the plan mid-implementation.** The original plan
+assumed `search_all`'s parallel per-domain fan-out (`asyncio.gather`)
+would keep total latency to ~one reranked call's worth (~20s), since
+requests are sent concurrently. Live testing showed this is wrong: the
+server is single-process, and reranking is synchronous CPU-bound work, so
+concurrent requests to it serialize rather than overlap — 2 domains
+measured ~40-50s, not ~20s. An attempted fix (`asyncio.to_thread` to let
+requests overlap via GIL release) was tried and measured **worse**
+(50s vs 40s) — this workload is CPU-bound, not GIL-bound, so the fix was
+reverted. The honest, corrected cost is **~20s × populated domain
+count**, documented in the tool description and `SEARCH_ALL_TIMEOUT`
+(raised to 150s).
+
+**What "pass" looks like.** 147 tests green (was 143 — 4 new, 3 updated
+for `/health`-driven domain discovery). Single-domain search completely
+unaffected: `reranker: null`, ~0.15-0.2s. `search_all` on the current
+2-domain corpus (devops, python): only those 2 domains queried (not
+travel/ai), results genuinely sorted by `relevance_score` across domains
+(not domain-concatenated), total latency ~40-50s.
+
+**⚠️ Gotcha for live MCP testing:** the MCP server is a long-running
+stdio process registered once per Claude Code session — it does **not**
+hot-reload `mcp_server.py` on file changes. If you test `search_all` via
+the actual registered MCP tool without restarting your Claude Code
+session (or the MCP server process) after pulling this branch, you will
+silently be running the OLD code with no error. Restart your session (or
+manually kill the `mcp_server.py` process(es) and let Claude Code
+respawn them) before trusting a live MCP test.
+
+## Steps
+
+1. `git checkout feat/phase5b-unified-search-all`
+2. `git diff main --stat` — expect 5 code files (`mcp/mcp_server.py`,
+   `mcp/tests/test_mcp_server.py`, `src/dev_rag/api.py`,
+   `src/dev_rag/settings.py`, `tests/test_api_e2e.py`) plus docs
+   (`CLAUDE.md`, `docs/TODO.md`, `docs/RUNBOOK.md`, `current_context.md`,
+   this file).
+3. **Read the force_rerank addition.**
+   `git diff main -- src/dev_rag/api.py src/dev_rag/settings.py` —
+   `SearchRequest.force_rerank`, `lifespan()` now loads the reranker
+   unconditionally, `use_reranker = settings.reranker_enabled or
+   request.force_rerank` gates both the candidate-pool-widening and the
+   actual rerank call, and `force_rerank_candidates` (10) is used instead
+   of `reranker_candidates` (50) when force_rerank — not the default — is
+   the reason reranking is happening. Confirm the comment explaining why
+   (50 candidates measures ~112s/query, would blow past any reasonable
+   timeout).
+4. **Read the search_all rewrite.** `git diff main -- mcp/mcp_server.py`
+   — confirm the dead unified-endpoint call is gone, domain population is
+   read from `/health`'s `store_parity`, and results are `.sort()`ed by
+   `relevance_score` before formatting (not just concatenated).
+5. `uv run pytest` — expect **147 passed**.
+6. **Confirm single-domain search is unaffected** (default, no
+   force_rerank):
+   ```bash
+   uv run uvicorn dev_rag.api:app --host 127.0.0.1 --port 8000   # terminal 1
+   curl -s -X POST localhost:8000/search -H "Content-Type: application/json" \
+       -d '{"query": "docker secrets", "domain": "devops", "n_results": 3}' \
+       | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['reranker'])"
+   ```
+   — expect `None`, and the call should complete in well under a second.
+7. **Confirm force_rerank works on a direct /search call:**
+   ```bash
+   curl -s -X POST localhost:8000/search -H "Content-Type: application/json" \
+       -d '{"query": "docker secrets", "domain": "devops", "n_results": 3, "force_rerank": true}' \
+       | python3 -m json.tool
+   ```
+   — expect `reranker_score` populated on each result, `"reranker":
+   "BAAI/bge-reranker-v2-m3"` in the response, and this call takes
+   ~15-25s (not instant, not ~112s).
+8. **Confirm search_all's dynamic discovery and cross-domain sort** — per
+   the gotcha above, test via direct import rather than the live MCP tool
+   unless you've restarted your session:
+   ```bash
+   DEV_RAG_BASE_URL=http://localhost:8000 uv run python -c "
+   import asyncio, sys; sys.path.insert(0, 'mcp')
+   import mcp_server
+   asyncio.run(mcp_server._handle_search_all({'query': 'docker secrets management', 'n_results': 4}))
+   " 2>&1 | tail -5
+   ```
+   — expect only `devops`/`python` sources (not travel/ai), results in
+   descending score order, total wall time ~40-50s. Ctrl-C the server
+   (terminal 1).
+9. If satisfied:
+   ```bash
+   git checkout main
+   git merge --no-ff feat/phase5b-unified-search-all
+   git push origin main
+   ```
 
 ---
 

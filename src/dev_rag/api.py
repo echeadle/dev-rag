@@ -15,16 +15,23 @@ scored it below settings.reranker_min_score; None means the reranker did not
 run, so confidence is unknowable (RRF encodes rank, not relevance).
 
 The BGE-M3 query embedder loads lazily on the FIRST search (~10 s CPU);
-the reranker loads EAGERLY at startup via lifespan when enabled
-(ADR-012). Tests inject fakes via dev_rag.retrieve._embedder and
-dev_rag.reranker._reranker — the suite never loads real models.
+the reranker loads EAGERLY at startup via lifespan UNCONDITIONALLY
+(Phase 5b) — loading is cheap (cached weights, seconds), and it must be
+ready for any `force_rerank=true` request regardless of the server-wide
+`reranker_enabled` default (ADR-012, still OFF by default). Tests inject
+fakes via dev_rag.retrieve._embedder and dev_rag.reranker._reranker —
+the suite never loads real models.
 Hybrid is two-stage (Phase 3): top-`reranker_candidates` from RRF, then
-bge-reranker-v2-m3 re-scores and returns the caller's n_results.
+bge-reranker-v2-m3 re-scores and returns the caller's n_results — this
+stage now runs whenever `settings.reranker_enabled OR request.
+force_rerank` is true, not just the server-wide default.
 
 Fixes applied:
   OBS-001: /search always emits `relevance_score` — never rrf_score/reranker_score/score
   OBS-002: rerank fallback returns RankedResult(reranker_score=None) not raw HybridResult
-  OBS-004: cross-domain and graph endpoints gated off until implemented
+  OBS-004: cross-domain gated off until implemented (search_all now does a
+    client-side merge via force_rerank + score-sort, Phase 5b — see
+    mcp_server.py; a real POST /search domain=None route is still gated off)
   OBS-009: /health store_parity reports REAL ChromaDB/SQLite counts per domain
   OBS-010: startup uses lifespan context manager, not deprecated on_event
 """
@@ -52,9 +59,11 @@ log = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup/shutdown. Embedder is lazy (see module docstring); the
-    reranker loads eagerly here (ADR-012: once per process, ~seconds)."""
-    if settings.reranker_enabled:
-        reranker.get_reranker()
+    reranker loads eagerly here UNCONDITIONALLY (Phase 5b, once per
+    process, ~seconds, cached weights) so it's ready for any
+    force_rerank=true request even when settings.reranker_enabled is
+    False — the server-wide default (ADR-012) is unaffected by this."""
+    reranker.get_reranker()
     log.info("dev-rag startup complete")
     yield
     log.info("dev-rag shutdown")
@@ -78,6 +87,12 @@ class SearchRequest(BaseModel):
     domain: str
     n_results: int = Field(default=5, ge=1, le=50)
     search_mode: SearchMode = SearchMode.hybrid
+    # Phase 5b: per-request reranker override, independent of the
+    # server-wide settings.reranker_enabled default (ADR-012 stays OFF).
+    # Used by mcp_server.py's search_all so cross-domain search gets a
+    # domain-agnostic relevance score, while single-domain search stays
+    # fast by default.
+    force_rerank: bool = False
 
     @field_validator("domain")
     @classmethod
@@ -183,11 +198,21 @@ async def search(request: SearchRequest) -> dict:
     cross-encoder (with OBS-002 RankedResult fallback to RRF order).
     Dense/sparse are single-stage diagnostic modes and never rerank.
     """
+    use_reranker = settings.reranker_enabled or request.force_rerank
     if request.search_mode == SearchMode.hybrid:
         # Stage 1: with the reranker on, fetch a wide pool (ADR-012's 50→N);
         # the backends must also widen or fusion can never fill the pool.
-        if settings.reranker_enabled:
-            pool = settings.reranker_candidates
+        # Phase 5b: force_rerank uses the SMALLER force_rerank_candidates
+        # pool, not reranker_candidates (default 50 → measured ~112s/query,
+        # would blow past mcp_server.py's HTTP timeout and defeat the point
+        # of an "interactive-ish" cross-domain search). The deliberate
+        # default-on path still respects operator-configured reranker_candidates.
+        if use_reranker:
+            pool = (
+                settings.reranker_candidates
+                if settings.reranker_enabled
+                else settings.force_rerank_candidates
+            )
             candidates = hybrid_search(
                 request.query, request.domain, n_results=pool,
                 dense_candidates=pool, sparse_candidates=pool,
@@ -197,11 +222,22 @@ async def search(request: SearchRequest) -> dict:
                 request.query, request.domain, n_results=request.n_results,
             )
         # Stage 2: cross-encoder re-score. Falls back to RRF order (OBS-002)
-        # when the reranker is disabled, not loaded, or raises.
+        # when the reranker is disabled (and not force_rerank), not loaded,
+        # or raises. The model is always loaded (lifespan, Phase 5b), so
+        # reranker._reranker is available whenever use_reranker is true.
+        # Phase 5b note: tried asyncio.to_thread here to let search_all's
+        # concurrent per-domain fan-out overlap instead of serializing on
+        # this single-threaded server — measured WORSE (50s vs 40s for 2
+        # domains), not better. This is genuinely CPU-bound (the CrossEncoder
+        # likely already uses its own internal BLAS-level thread pool), not
+        # GIL-contention-bound, so two "concurrent" reranks just compete for
+        # the same physical cores plus added thread-scheduling overhead.
+        # Reverted — search_all's real cost is ~20s × populated-domain-count,
+        # not a fixed ~20s; SEARCH_ALL_TIMEOUT in mcp_server.py is sized for it.
         ranked = rerank_with_fallback(
             request.query,
             candidates,
-            reranker._reranker if settings.reranker_enabled else None,
+            reranker._reranker if use_reranker else None,
             top_n=request.n_results,
         )
         results = [
@@ -257,7 +293,13 @@ async def search(request: SearchRequest) -> dict:
         "query": request.query,
         "domain": request.domain,
         "search_mode": request.search_mode.value,
-        "reranker": settings.reranker_model if settings.reranker_enabled else None,
+        # Phase 5b: reflects whether THIS response was actually reranked
+        # (default OR force_rerank), not just the server-wide default — a
+        # caller using force_rerank needs this to say the model ran.
+        # Dense/sparse never rerank regardless of use_reranker (docstring).
+        "reranker": settings.reranker_model
+        if use_reranker and request.search_mode == SearchMode.hybrid
+        else None,
     }
 
 

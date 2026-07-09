@@ -146,6 +146,33 @@ def test_hybrid_reranker_end_to_end(client, monkeypatch):
     assert data["reranker"] == settings.reranker_model
 
 
+def test_hybrid_force_rerank_end_to_end(client, monkeypatch):
+    """Phase 5b: force_rerank=true triggers reranking on its own, even
+    with settings.reranker_enabled left at the fixture default (False) —
+    proves the per-request override works independently of the server-wide
+    ADR-012 default, which stays unaffected (search_devops/search_python
+    style single-domain calls never set this field)."""
+    monkeypatch.setattr(reranker, "_reranker", FakeCrossEncoder())
+    assert settings.reranker_enabled is False   # the ADR-012 default, untouched
+    data = search(client, search_mode="hybrid", force_rerank=True)
+    top = data["results"][0]
+    # Same assertion as test_hybrid_reranker_end_to_end — the cross-encoder
+    # override proves Stage 2 ran, this time via force_rerank alone
+    assert top["chunk_id"] == "tiny_0002"
+    assert top["reranker_score"] == pytest.approx(9.0)
+    assert top["relevance_score"] == pytest.approx(9.0)
+    assert data["reranker"] == settings.reranker_model
+
+
+def test_hybrid_without_force_rerank_stays_rrf_only(client):
+    """Sibling of the above: force_rerank defaults to False, so a plain
+    request is unaffected — RRF order, no reranker fields populated."""
+    data = search(client, search_mode="hybrid")
+    top = data["results"][0]
+    assert top["reranker_score"] is None
+    assert data["reranker"] is None
+
+
 def test_hybrid_reranker_weak_match_flag(client, monkeypatch):
     """FBL-006: when the reranker ran but scored below reranker_min_score,
     the result is flagged weak_match=True — a soft signal, ranking unchanged."""

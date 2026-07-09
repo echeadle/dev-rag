@@ -63,12 +63,30 @@ Work through `IMPLEMENTATION-ORDER.md` in sequence:
   (refactoring/optimization-focused, TypeScript examples) never mentions
   the GIL, matching the devops-007 (Podman) negative-test convention.
   python-001/002 stay `expected_source: null` — never gated on this book.
-- [ ] **Phase 5b** — Unified search_all ranking via reranker
-  - [ ] Review `search_all` result budget (found in MCP smoke test 2026-07-05):
-    the MCP fan-out fallback splits `n_results // 4` across domains
-    (`mcp/mcp_server.py`), so a request for 8 returns only 2 while devops is
-    the sole populated domain. Left as-is deliberately — the real fix is the
-    unified cross-domain endpoint (OBS-004 gate), not patching the fallback.
+- [x] **Phase 5b** — ✅ 2026-07-09. Unified `search_all` ranking, scoped to
+  `search_all` only (Ed's call) — not a global ADR-012 reversal.
+  `SearchRequest` gains `force_rerank: bool` (independent of
+  `settings.reranker_enabled`); `lifespan()` now always loads the reranker
+  model at startup (cheap, cached weights) so it's ready regardless of the
+  default. `_handle_search_all` (`mcp/mcp_server.py`) was rewritten: drops
+  the dead "try unified endpoint" call (POST /search always 422s without a
+  domain), discovers POPULATED domains via `/health` instead of a
+  hardcoded 4-way split, fans out with `force_rerank: true`, and — the
+  actual fix — **sorts the combined results by `relevance_score`**, valid
+  because the reranker's cross-encoder score is domain-agnostic (RRF is
+  not, per the `weak_match` docstring: "encodes rank, not relevance").
+  New `settings.force_rerank_candidates` (10, not the default
+  `reranker_candidates` 50) keeps force_rerank calls from taking the
+  measured ~112s/query-at-50 path.
+  **Latency finding (corrects the original plan):** tried
+  `asyncio.to_thread` to let concurrent per-domain reranks overlap —
+  measured WORSE (50s vs 40s for 2 domains), not better. This is
+  CPU-bound, not GIL-bound (the CrossEncoder likely already runs its own
+  internal thread pool), so reverted. **Real cost is ~20s × populated
+  domain count**, not a flat ~20s — `SEARCH_ALL_TIMEOUT` raised to 150s
+  and the tool description states the honest per-domain cost.
+  4 new tests, 3 existing ones updated for `/health`-driven discovery;
+  147 total (was 143).
 - [ ] ~~**Phase 6** — Headroom compression~~ **REMOVED from the build path**
   (2026-07-04) — deferred to nice-to-have; see **Deferred** below.
   *(Phase numbers 7/8 left unchanged to stay aligned with
