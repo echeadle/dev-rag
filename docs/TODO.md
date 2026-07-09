@@ -279,13 +279,23 @@ Books and sources to ingest as the system comes online:
   (this entry previously said "with Python examples" — verified wrong
   against real ingested content); the refactoring rules/principles apply
   language-agnostically, same as Art of Unit Testing's JS examples below.
-- [ ] Confirm remaining Python book titles from shelf (Practices of the
-  Python Pro / Art of Unit Testing, both already owned — see below)
-- [ ] Practices of the Python Pro (Hillard, Manning) — **already owned**;
-  professional software design, modularisation, reducing complexity,
-  coding style and application design at scale; complements Five Lines
-  of Code well — Clausen gives concrete rules, Hillard gives broader
-  design principles
+- [ ] Confirm remaining Python book titles from shelf (Art of Unit Testing,
+  already owned — see below)
+- [x] Practices of the Python Pro (Hillard, Manning) — ✅ 2026-07-09
+  (`feat/ingest-practices-python-pro`): 397 chunks, 250 pages (237
+  kept), `python` domain now 929/929 in_sync (2nd book, alongside Five
+  Lines of Code). Stage-8 verify passed first try. `python-003`'s GIL
+  negative re-checked, still holds. **Tried and parked an added-value
+  eval question** (matching the devops-034 precedent — no positive
+  question pointed at this book's unique content): coupling, type
+  hints, and cProfile/pytest-specific queries all still retrieved Five
+  Lines of Code's content first on dense search despite this book being
+  the literal/BM25 match — genuine semantic overlap between the two
+  python books, not a bug. Declined to force a fragile question by
+  cherry-picking a winning phrasing (same principle as OBS-003: never
+  guess/force ground truth). Existing 6-question baseline reproduces
+  clean, 100% unchanged. New baseline
+  `eval/baselines/2026-07-09_python_2books_6q.json`.
   cryptography, TLS, authentication, OAuth 2.0, attack resistance;
   directly relevant to securing FastAPI backends and the Ansible security project
 - [ ] The Art of Unit Testing, 3rd Edition (Osherove & Khorikov, Manning) — **already owned**;

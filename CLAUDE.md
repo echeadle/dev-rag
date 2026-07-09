@@ -171,6 +171,26 @@ Ingest tests never load real BGE-M3 — the model is always mocked.
   88.3→90.0 (+1.7) — the 5th book added coverage without eroding anything.
   The one failure (`devops-020`) is the pre-existing, already-documented
   Ansible-source-competition issue, not a new regression.
+- **Practices of the Python Pro ingest (2026-07-09,
+  `feat/ingest-practices-python-pro`):** 2nd python-domain book, no
+  pipeline code changes. 397 chunks (250 pages, 237 kept post-clean);
+  `python` domain now 929/929 in_sync, `devops` unaffected at 2072.
+  Stage-8 verify passed first try (dist=0.354). `python-003`'s GIL
+  negative test re-checked and still holds (0 mentions, grep-verified —
+  this is a software-practices book, not internals). **Tried and parked
+  a new added-value positive question** (matching the devops-034
+  precedent): the two python books turn out to have real semantic
+  overlap — coupling, type hints, and even cProfile/pytest-specific
+  queries all still retrieved Five Lines of Code's broader
+  performance/testing content ahead of this book's more literal coverage
+  on dense search, despite sparse/BM25 correctly favoring the right book.
+  Rather than force a fragile question by cherry-picking a winning
+  phrasing (the exact mistake OBS-003 already warns against), left this
+  parked — same call as the devops corpus's own shared-topic questions.
+  Existing 6-question baseline reproduces clean: **100% across the board,
+  unchanged**, confirming the new book adds coverage without regressing
+  anything measured. New baseline
+  `eval/baselines/2026-07-09_python_2books_6q.json`.
 
 These are still stubs, not working code:
 - `graph.py`, `agent.py` (unwired — nothing imports it), `mcp/compress.py`

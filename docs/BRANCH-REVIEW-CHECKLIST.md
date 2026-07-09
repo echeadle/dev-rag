@@ -36,6 +36,10 @@ bottom of this file, in the same commit. Docs-only changes are exempt.
   "Mastering Ansible Ingest Review" at the bottom — 5th DevOps book, a
   stage-8 verify-query retry, and live re-verification that the new
   book's Podman content doesn't crack an existing negative test.
+- **Practices of the Python Pro ingest** (feat/ingest-practices-python-pro):
+  see "Practices of the Python Pro Ingest Review" at the bottom — 2nd
+  python-domain book, and an added-value eval question that was tried
+  and honestly parked rather than forced.
 
 ## Steps (generic + Phase 3 example)
 
@@ -723,6 +727,95 @@ new).
     ```bash
     git checkout main
     git merge --no-ff feat/ingest-mastering-ansible
+    git push origin main
+    ```
+
+---
+
+# Practices of the Python Pro Ingest Review (feat/ingest-practices-python-pro)
+
+**What this review verifies.** This branch ingests the 2nd python-domain
+book (Practices of the Python Pro, Hillard) alongside Five Lines of Code.
+**No code change** — the corpus itself is gitignored; the tracked edits
+are a new eval baseline JSON and three doc updates (CLAUDE.md,
+current_context.md, docs/TODO.md). Like the prior ingest branches, this
+is a review of *data and measurement integrity*.
+
+One thing worth understanding before merging: **the added-value eval
+question was tried and deliberately parked, not added.** Following the
+devops-034 precedent (add a positive question pointing at a new book's
+unique content, so the book isn't only measurable as erosion), I looked
+for content unique to this book — coupling, Python type hints, cProfile
+profiling, pytest fixtures — verified each was genuinely absent or
+minimal in Five Lines of Code (grep counts). But live-testing each
+candidate question showed Five Lines of Code's broad
+performance/refactoring content kept outranking this book on dense
+search, even when BM25 correctly favored the right book (checked
+directly: sparse-mode search with literal tool names like "cProfile
+timeit" correctly ranks Practices of the Python Pro first — it's dense +
+RRF fusion pulling in the semantic overlap). Rather than keep hunting
+for a phrasing that happens to win — which would be cherry-picking, the
+exact thing OBS-003 already warns against — I left it parked and
+documented the finding. This is a genuine, reproducible corpus property
+(the two python books have real thematic overlap), not a retrieval bug.
+
+**What "pass" looks like.** 147 tests still green (no code changed).
+Health shows python 929/929 in sync, devops unaffected at 2072. The
+existing 6-question python eval reproduces 100% across every metric,
+unchanged from the 1-book baseline — confirming the new book adds
+coverage without eroding the existing, gated Five-Lines-of-Code
+questions.
+
+## Steps
+
+1. `git checkout feat/ingest-practices-python-pro`
+2. `git diff main --stat` — expect **4 files changed, no code**: the new
+   baseline `eval/baselines/2026-07-09_python_2books_6q.json` and three
+   doc updates (`CLAUDE.md`, `current_context.md`, `docs/TODO.md`).
+   Anything under `src/`, `mcp/`, `tests/`, `eval/*.py`, or
+   `data/evaluation/*.yaml` in the stat is unexpected — stop and ask why
+   (the added-value question was parked, not committed).
+3. `uv run pytest` — expect **147 passed** (unchanged — confirms no code
+   drifted).
+4. Confirm the corpus loaded at parity (no re-ingest needed):
+   ```bash
+   sqlite3 data/dev_rag.db \
+     "SELECT domain, count(*) FROM chunks WHERE status='active' GROUP BY domain;
+      SELECT 'fts', count(*) FROM chunks_fts;"
+   ```
+   — expect `devops|2072`, `python|929`, `fts|3001`.
+5. Confirm the new book is queryable (verify stage against the live stores):
+   ```bash
+   uv run python -m dev_rag.ingest.pipeline \
+       --source data/books/Practices_of_the_Python_Pro.pdf \
+       --domain python --start-stage 8 \
+       --query "How should you structure a Python application's packages and modules for maintainability?"
+   ```
+   — expect `[8 verify] parity OK (929); top hit practices_of_the_python_pro_...`
+6. Start the server with defaults:
+   ```bash
+   uv run uvicorn dev_rag.api:app --host 127.0.0.1 --port 8000
+   ```
+7. In a second terminal — reproduce the python eval (deterministic):
+   ```bash
+   uv run python eval/run_eval.py --domain python --no-save \
+       --compare eval/baselines/2026-07-08_python_6q.json
+   ```
+   — expect **100% across R@1/R@3/MRR/composite, +0.0% deltas**, no
+   failures.
+8. OPTIONAL — spot-check the semantic-overlap finding directly:
+   ```bash
+   curl -s -X POST localhost:8000/search -H "Content-Type: application/json" \
+       -d '{"query": "How do you use the cProfile module to profile a Python program?", "domain": "python", "n_results": 3}' \
+       | python3 -c "import json,sys; [print(r['source']) for r in json.load(sys.stdin)['results']]"
+   ```
+   — expect `Five_Lines_of_Code.pdf` to still rank first (the parked
+   finding, reproduced).
+9. Ctrl-C the server.
+10. If satisfied:
+    ```bash
+    git checkout main
+    git merge --no-ff feat/ingest-practices-python-pro
     git push origin main
     ```
 
