@@ -31,6 +31,14 @@ one-line rule under ## Lessons, so it never happens again.
   both degrade in that territory, and I have no way to measure it
   precisely mid-session, so the fix is proactively asking, not waiting to
   notice.
+- When killing a background dev server started earlier in a session, kill
+  it by the PID captured at launch (`ps aux | grep ...` if the PID was
+  lost), never by `kill %1` — each Bash tool call is its own shell, so
+  job-table numbers don't reliably survive across calls. Reason:
+  2026-07-09, a `uvicorn` server started for the Phase 5b live review sat
+  running for over an hour after a later `kill %1` silently killed
+  nothing (wrong/empty job table in that call's fresh shell), only caught
+  during an unrelated cleanup sweep.
 
 ## Toolchain — uv only
 - **Use `uv` exclusively. Never call `pip` directly.** Use `uv run …`, `uv add …`,
