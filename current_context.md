@@ -16,12 +16,10 @@ domains (devops: 7 books/3797 chunks, python: 2 books/929 chunks,
 ai: 1 book/608 chunks).
 
 ## Next Action
-Pick the next unit of work from `docs/TODO.md`. Ready-to-ingest with no
-blockers: **The Art of Unit Testing, 3rd Edition** (Osherove & Khorikov)
-— python domain, 3rd book, already owned, just needs placing in
-`data/books/`. Everything else needs a purchase (Rothman/Kimothi, AI
-domain) or shelf-title confirmation (additional Ansible book), or is
-explicitly low priority/gated (Stable Diffusion — waits on Oryx Pro).
+In progress: ingesting **The Art of Unit Testing, 2nd Edition** (Osherove)
+— python domain, 3rd book. File was already present in `data/books/`
+(corrected from earlier "3rd Edition" wording in TODO.md/here, which was
+wrong). Branch: `feat/ingest-art-of-unit-testing`.
 
 ## Done When
 N/A — no task in progress.

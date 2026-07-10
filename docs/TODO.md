@@ -322,9 +322,11 @@ Books and sources to ingest as the system comes online:
   `eval/baselines/2026-07-09_python_2books_6q.json`.
   cryptography, TLS, authentication, OAuth 2.0, attack resistance;
   directly relevant to securing FastAPI backends and the Ansible security project
-- [ ] The Art of Unit Testing, 3rd Edition (Osherove & Khorikov, Manning) — **already owned**;
-  readable and maintainable tests, fakes/stubs/mocks, isolation frameworks,
-  legacy code, organisation-wide test strategies; examples in JavaScript but
+- [ ] The Art of Unit Testing, 2nd Edition (Osherove, Manning) — **already owned**,
+  file confirmed present in `data/books/` 2026-07-10 (previous TODO entries
+  said "3rd Edition" — wrong, corrected against the actual file); readable
+  and maintainable tests, fakes/stubs/mocks, isolation frameworks, legacy
+  code, organisation-wide test strategies; examples in JavaScript but
   principles are language-agnostic and directly applicable to Python pytest work
 - [ ] Prioritise books that cover: internals, async, production patterns,
   packaging, refactoring, security, testing
@@ -451,9 +453,10 @@ is working and evaluated.
   work? Determined by ablation queries after hybrid search is live.
   *(Review OBS-006: still open; may move to `unicode61` + custom `tokenchars`.)*
 - [x] **Python book titles** — Five Lines of Code confirmed and ingested
-  2026-07-08 (Phase 5). Remaining two candidates (Practices of the Python
-  Pro, Art of Unit Testing) still need shelf confirmation before their
-  own ingests.
+  2026-07-08 (Phase 5); Practices of the Python Pro confirmed and ingested
+  2026-07-09. Art of Unit Testing confirmed 2026-07-10 as the **2nd
+  Edition** (file present in `data/books/` — earlier entries wrongly said
+  3rd Edition).
 - [ ] **Ansible book titles** — confirm from shelf before ingesting DevOps corpus.
 
 ---
