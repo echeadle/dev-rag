@@ -2,52 +2,42 @@
 _Last updated: 2026-07-09_
 
 ## Active File
-src/dev_rag/settings.py, mcp/mcp_server.py, eval/loader.py, eval/run_eval.py
-(code changes), plus tests/*, mcp/tests/*, and doc/spec updates across
-DEV-RAG-ARCHITECTURE.md, RUNBOOK.md, README.md, pyproject.toml,
-docs/TODO.md, planning/*.md.
+data/books/Securing_DevOps.pdf ingest (no source code touched — pure
+data addition), docs/TODO.md, CLAUDE.md, eval/baselines/.
 
 ## Current Step
-Removed the `travel` domain from dev-rag entirely, on branch
-`feat/remove-travel-domain`, NOT yet merged — Ed's call: no travel books
-exist or are planned, travel research belongs in web search, not this
-RAG system. Full removal, not just docs cleanup:
-- `settings.valid_domains` no longer includes `travel`
-- `search_travel` MCP tool removed (registration, dispatch, label, docs)
-- `data/evaluation/travel_questions.yaml` deleted (was a never-populated stub)
-- `eval/loader.py`/`eval/run_eval.py` no longer reference it
-- Tests repointed from `travel` fixtures to `python`/`ai` fixtures where a
-  second domain was needed for meaningful multi-domain coverage
-- DEV-RAG-ARCHITECTURE.md's premise statement + ADR-002/007/011,
-  RUNBOOK.md, README.md, pyproject.toml, and all `planning/*.md` specs
-  updated
-- Historical records deliberately left alone: past
-  docs/BRANCH-REVIEW-CHECKLIST.md sections, docs/reviews/
-  OPUS-REVIEW-VERIFICATION.md, docs/plans/dev-rag-phase1a-plan.md
-
-Live-verified, not just unit-tested: `/health` no longer lists travel,
-`POST /search {"domain": "travel"}` is correctly rejected with a clear
-validation error, and the MCP `list_tools()` no longer offers
-`search_travel`.
+Ingested Securing DevOps (7th DevOps book) on branch
+`feat/ingest-securing-devops`, NOT yet merged. 708 chunks, 401 pages
+(390 kept), `devops` domain now 3797/3797 in_sync. Ran to completion
+cleanly (no environment kill this time). Stage-8 verify passed first
+try. Existing negatives re-checked live — all hold. **New erosion
+pattern, distinct from the Ansible-competition pattern seen before:**
+this is the first book specifically about DevOps *security*, so it now
+genuinely, deservedly competes with Docker Deep Dive's security chapter
+on security-themed questions (not semantic drift — actual topical
+merit, verified by close score margins). New baseline
+`eval/baselines/2026-07-09_hybrid_rrf_7books_39q.json`: R@1 -3.8,
+source_precision -16.7 (first contest ever for that category),
+composite -0.8.
 
 ## Next Action
-1. Write Branch Review Checklist section.
+1. Write Branch Review Checklist section (ingest-style).
 2. Ed reviews + merges.
 
 ## Done When
-- [x] travel removed from settings.valid_domains
-- [x] search_travel MCP tool fully removed
-- [x] travel_questions.yaml deleted, loader/run_eval updated
-- [x] All tests updated and passing (146, was 147)
-- [x] Live-verified: /health, /search rejection, MCP tool list
-- [x] Docs/specs updated (architecture, runbook, README, pyproject, planning/*)
+- [x] Securing DevOps ingested, corpus parity confirmed (3797/3797/3797)
+- [x] Stage-8 verify passing
+- [x] Existing negatives (Podman/GitLab/Istio/Pulumi) re-checked live
+- [x] New 7-book baseline promoted; erosion investigated and explained
+- [x] 146 tests still green (no code changed)
 - [ ] Branch Review Checklist section written
 - [ ] Ed reviews + merges
 
 ## Blockers
-None.
+None. Still not placed in data/books/: Art of Unit Testing,
+Rothman/Kimothi (AI, not yet purchased), Stable Diffusion book,
+additional Ansible titles (need shelf confirmation).
 
 ## Phase
-Corpus: 9 books / 4626 chunks / 3 domains (devops, python, ai) — `travel`
-no longer exists as a domain concept. No active implementation phase —
-this was a scope-correction task, not corpus building.
+Corpus: 10 books / 5334 chunks / 3 domains (devops, python, ai). No
+active implementation phase — corpus-building track.

@@ -259,10 +259,18 @@ Books and sources to ingest as the system comes online:
   96.2→92.3% (-3.8) — `devops-para-001b` flipped to failing, a
   recurrence of the same Ansible-vs-Docker erosion pattern already
   recorded at the RLA ingest (not a new bug — recorded, not fixed).
-- [ ] Securing DevOps (Vehent, Manning 2018) — **already owned**;
-  test-driven security, continuous security monitoring, risk assessment,
-  securing cloud services and web applications; written by Mozilla Firefox
-  Operations Security lead; core principles age well despite 2018 publication
+- [x] Securing DevOps (Vehent, Manning 2018) — ✅ 2026-07-09
+  (`feat/ingest-securing-devops`): 708 chunks, 401 pages (390 kept),
+  `devops` domain now 3797/3797 in_sync (7th book). Ran cleanly, no
+  environment interruption. Existing negatives re-checked (GitLab's 4
+  mentions all incidental, `devops-027` holds). **New erosion pattern —
+  genuine topical competition**, not corpus-shift noise: this is the
+  first security-*specific* book in the corpus, so it now legitimately
+  edges out Docker Deep Dive's security chapter on security-themed
+  questions (checked live: `devops-006` loses by 0.031 vs 0.0303).
+  New baseline `eval/baselines/2026-07-09_hybrid_rrf_7books_39q.json`:
+  R@1 84.6→80.8% (-3.8), source_precision 100→83.3% (-16.7, first time
+  this category has been contested), composite -0.8.
 
 ### AI Domain
 - [x] Unlocking Data with Generative AI and RAG (Bourne, Packt 2024) — ✅
