@@ -133,5 +133,5 @@ def test_hybrid_search_respects_n_results(stores):
 
 
 def test_hybrid_search_survives_empty_domain(stores):
-    # travel: no collection AND no FTS rows -> empty, not an error
-    assert hybrid_search("anything", "travel", model=QueryModel(), **stores) == []
+    # no collection AND no FTS rows -> empty, not an error
+    assert hybrid_search("anything", "nonexistent", model=QueryModel(), **stores) == []

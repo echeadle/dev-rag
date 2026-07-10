@@ -14,7 +14,6 @@ REPO = Path(__file__).resolve().parent.parent
 # All question files; the spec's list predates the ai/python domains.
 QUESTION_FILES = [
     REPO / "data/evaluation/devops_questions.yaml",
-    REPO / "data/evaluation/travel_questions.yaml",
     REPO / "data/evaluation/python_questions.yaml",
     REPO / "data/evaluation/ai_questions.yaml",
     REPO / "data/evaluation/cross_domain_questions.yaml",

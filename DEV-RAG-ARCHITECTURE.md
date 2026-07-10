@@ -12,7 +12,7 @@ dev-rag is a personal expert collaboration system. The core idea is to index boo
 
 The motivating example was Docker secrets: virtually every tutorial shows passwords hardcoded in a Dockerfile or Compose file with a note saying "don't do this in production," but never shows the production alternative. dev-rag is designed to close that gap by making your curated library searchable and conversational.
 
-It is not a general-purpose search engine. It is a personal knowledge base built from sources you trust, tuned for production-grade DevOps and travel questions.
+It is not a general-purpose search engine. It is a personal knowledge base built from sources you trust, tuned for production-grade software engineering questions.
 
 ---
 
@@ -86,9 +86,9 @@ The one scenario where Go would still make sense is as a thin API gateway in fro
 
 ### ADR-002: BGE-M3 as the embedding model
 
-**Decision:** BAAI/bge-m3 for all domains (DevOps and Travel).
+**Decision:** BAAI/bge-m3 for all domains.
 
-**Context:** Several embedding models were evaluated including `voyage-code-2` (Voyage AI, code-specific), `Qwen3-Embedding-8B` (highest MTEB accuracy among open models at time of decision), and `nomic-embed-text-v2` (good general-purpose baseline). The question was whether to use a code-specific model for the DevOps corpus and a general model for Travel, or a single model across both.
+**Context:** Several embedding models were evaluated including `voyage-code-2` (Voyage AI, code-specific), `Qwen3-Embedding-8B` (highest MTEB accuracy among open models at time of decision), and `nomic-embed-text-v2` (good general-purpose baseline). The question was whether to use a code-specific model for the DevOps corpus and a general model for other domains, or a single model across all of them.
 
 **Why BGE-M3:**
 
@@ -98,7 +98,7 @@ The one scenario where Go would still make sense is as a thin API gateway in fro
 
 3. **Local inference, no API dependency.** Voyage AI is a hosted API. BGE-M3 runs locally via HuggingFace, which is consistent with the project's strong preference for open ecosystems and avoiding vendor lock-in. No API key, no per-token cost, no outbound dependency at query time.
 
-4. **Operational simplicity.** Using one model for both domains means one model loaded in memory, one embedding function wired to all collections, and no per-domain routing logic in the embedding layer. The routing registry (domain → collection) stays simple.
+4. **Operational simplicity.** Using one model across all domains means one model loaded in memory, one embedding function wired to all collections, and no per-domain routing logic in the embedding layer. The routing registry (domain → collection) stays simple.
 
 **Why not Qwen3-Embedding-8B:** Higher MTEB accuracy, but 8B parameters requires meaningful GPU VRAM. BGE-M3 at ~570M parameters is comfortable on available hardware without competing with other local inference workloads. Qwen3-Embedding-8B is the natural upgrade path if retrieval quality becomes the bottleneck.
 
@@ -145,7 +145,7 @@ SELECT extversion FROM pg_extension WHERE extname = 'vector';
 | `chunk_id` | TEXT | Unique identifier for this chunk |
 | `content_hash` | TEXT | SHA-256 of chunk text for change detection |
 | `version` | TEXT | Edition or version of the source |
-| `domain` | TEXT | `devops` or `travel` |
+| `domain` | TEXT | `devops`, `python`, or `ai` |
 | `source_path` | TEXT | Original file path or URL |
 | `page_number` | INT | Page in the source PDF (if applicable) |
 | `ingest_timestamp` | TEXT | ISO 8601 timestamp of last ingest |
@@ -220,15 +220,15 @@ Use when: a documentation site is crawled on a schedule, a runbook is updated fr
 
 ### ADR-007: Multi-domain architecture — one server, isolated collections
 
-**Decision:** Single dev-rag server instance with separate ChromaDB collections per domain (`devops`, `travel`).
+**Decision:** Single dev-rag server instance with separate ChromaDB collections per domain (`devops`, `python`, `ai`, ...).
 
-**Context:** The project has two corpora with different subject matter. The question was whether to run separate server instances or share one.
+**Context:** The project has multiple corpora with different subject matter. The question was whether to run separate server instances or share one.
 
 **The hard constraint:** Vectors from different embedding models cannot share a collection. Different models have different dimensionality and incompatible vector spaces — cosine similarity between a BGE vector and a Nomic vector is noise. Even if two models share dimensionality, their spaces are unrelated.
 
 **The corollary:** Queries must be embedded with the same model used to index the collection. The routing registry (domain → embedding model → collection name) is the critical piece of glue.
 
-**Why one server:** With BGE-M3 chosen for both domains (ADR-002), both collections use the same model. There is no technical reason for separate instances, and one server is simpler to operate, deploy, and monitor. If domains ever needed different models, the right shape would be separate collections on the same server (not separate servers), with a routing registry directing queries to the right collection and embedding function.
+**Why one server:** With BGE-M3 chosen for all domains (ADR-002), every collection uses the same model. There is no technical reason for separate instances, and one server is simpler to operate, deploy, and monitor. If domains ever needed different models, the right shape would be separate collections on the same server (not separate servers), with a routing registry directing queries to the right collection and embedding function.
 
 **Cross-domain search:** When `search_all` is called from the MCP server, results are retrieved separately per collection and merged. If a reranker is added (the planned next step), it runs over the merged result set to produce a single ranked list regardless of source domain.
 
@@ -329,7 +329,7 @@ proper `src/dev_rag/ingest/` package.
 
 ### ADR-011: Python domain added to the corpus
 
-**Decision:** Add `python` as a third domain alongside `devops` and `travel`,
+**Decision:** Add `python` as a domain alongside `devops`,
 ingesting personally owned Python books and curated Python reference sites.
 
 **Context:** The project is already writing a Python AI agent programming book,
@@ -344,7 +344,7 @@ Python content and DevOps content have different vocabularies and different
 query patterns. A question about Python decorators should not surface Docker
 chunks, and vice versa. Domain isolation keeps retrieval precise and gives
 Claude Code a `search_python` tool that is unambiguous in scope. A
-`search_all` call can still fan out to all three domains when needed.
+`search_all` call can still fan out to every populated domain when needed.
 
 **No architectural changes required:**
 The existing domain routing registry pattern (ADR-007) handles additional
@@ -352,7 +352,7 @@ domains cleanly. Adding `python` requires:
 
 1. Add `python` as a valid domain value in settings and validation
 2. Create a `python` ChromaDB collection at first ingest
-3. Add `search_python` tool to the MCP server alongside `search_devops` and `search_travel`
+3. Add `search_python` tool to the MCP server alongside `search_devops`
 4. Add `data/evaluation/python_questions.yaml` to the eval harness
 
 No changes to the embedding model (BGE-M3 handles Python prose and code
@@ -433,9 +433,8 @@ Stage 2 (slow, precise):     Cross-encoder → re-scored top-10
 3. **Reasonable size.** ~568M parameters — similar to BGE-M3 itself.
    Runs on CPU for personal-scale query volumes; significantly faster on GPU.
 
-4. **Multilingual.** Handles the Travel corpus (English prose, some French
-   and Greek place names) as well as DevOps and Python corpora without
-   domain-specific configuration.
+4. **Multilingual.** Handles non-English content without domain-specific
+   configuration, if a future corpus ever needs it.
 
 **Why not alternatives:**
 
@@ -577,7 +576,7 @@ spec in `planning/` and are ready to implement.
    delta reporting between pipeline changes.
    Spec: `planning/dev-rag-evaluation-strategy.md`.
 
-4. **Python domain** ✓ — Third corpus alongside DevOps and Travel.
+4. **Python domain** ✓ — Second corpus alongside DevOps.
    Decision recorded in ADR-011. No architectural changes required —
    add domain to settings, create ChromaDB collection, add `search_python`
    MCP tool, add `python_questions.yaml` to eval harness.
@@ -833,8 +832,8 @@ dev-rag/
 ├── data/
 │   └── evaluation/
 │       ├── devops_questions.yaml
-│       ├── travel_questions.yaml
 │       ├── python_questions.yaml
+│       ├── ai_questions.yaml
 │       └── cross_domain_questions.yaml
 ├── eval/
 │   ├── run_eval.py

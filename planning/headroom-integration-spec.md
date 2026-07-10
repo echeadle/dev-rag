@@ -246,7 +246,7 @@ async def _handle_domain_search(
     raw = data.get("results") or data.get("documents")
     results: list = raw if isinstance(raw, list) else ([raw] if raw else [])
 
-    label = {"devops": "DevOps", "travel": "Travel", "python": "Python"}.get(
+    label = {"devops": "DevOps", "python": "Python", "ai": "AI"}.get(
         domain, domain.capitalize()
     )
     header = f"## {label} search: \"{query}\"\n\n"

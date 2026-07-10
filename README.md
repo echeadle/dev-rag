@@ -2,7 +2,7 @@
 
 Exposes your **dev-rag** FastAPI retrieval system as an
 [MCP](https://modelcontextprotocol.io) server so Claude Code terminal sessions
-can query your DevOps and Travel corpora directly.
+can query your curated corpora directly.
 
 ---
 
@@ -10,8 +10,9 @@ can query your DevOps and Travel corpora directly.
 
 | Tool | Description |
 |------|-------------|
-| `search_devops` | Semantic search over Docker, Ansible, Python docs |
-| `search_travel` | Semantic search over Travel corpus |
+| `search_devops` | Semantic search over Docker, Ansible, Ubuntu Server docs |
+| `search_python` | Semantic search over Python books and references |
+| `search_ai` | Semantic search over the AI/RAG corpus |
 | `search_all` | Cross-domain search with domain tags on results |
 | `get_document` | Fetch full document by ID |
 | `list_collections` | List available domains + document counts |

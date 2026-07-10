@@ -85,7 +85,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="dev-rag evaluation harness")
     parser.add_argument("--base-url", default="http://localhost:8000")
     parser.add_argument("--domain",
-                        choices=["devops", "travel", "python", "ai", "cross_domain"])
+                        choices=["devops", "python", "ai", "cross_domain"])
     parser.add_argument("--category", nargs="+")
     parser.add_argument("--graph", action="store_true",
                         help="include graph traversal (gated off until /search/graph exists)")

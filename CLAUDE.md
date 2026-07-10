@@ -62,9 +62,9 @@ one-line rule under ## Lessons, so it never happens again.
   uv sync                  # resolves cleanly
   ```
 
-## Tests — the full suite is 147 (as of Phase 5b close, 2026-07-09)
+## Tests — the full suite is 146 (as of the travel-domain removal, 2026-07-09)
 ```
-uv run pytest              # expect 147 passed (118 in tests/ + 29 in mcp/tests/)
+uv run pytest              # expect 146 passed (118 in tests/ + 28 in mcp/tests/)
 ```
 The `mcp/tests/` include the fixtures/consumer-alignment tests guarding the two
 High review findings (OBS-001/002). **If a bare run reports only the `tests/`
@@ -251,6 +251,25 @@ Ingest tests never load real BGE-M3 — the model is always mocked.
   R@3 96.2→92.3% (-3.8, back off the ceiling), MRR 89.7→89.2 (-0.5),
   composite 90.0→88.2 (-1.7). Two failures: `devops-020` (pre-existing)
   and `devops-para-001b` (this erosion).
+- **Travel domain removed (2026-07-09, `feat/remove-travel-domain`,
+  Ed's call):** dev-rag never had travel books to ingest — travel
+  research is a web-search task, not a personal-library RAG task.
+  Removed as a valid domain everywhere: `settings.valid_domains` (now
+  `["devops", "python", "ai"]`), the `search_travel` MCP tool and its
+  dispatch/label/description code, the empty `travel_questions.yaml`
+  stub, and the domain lists/enums/examples across
+  DEV-RAG-ARCHITECTURE.md (premise statement + ADR-002/007/011),
+  RUNBOOK.md, README.md, pyproject.toml, and all `planning/*.md` specs.
+  Live-verified: `/health`'s `valid_domains` and `store_parity` no
+  longer list travel, `POST /search` with `domain: "travel"` is
+  correctly rejected, and the MCP `list_tools()` no longer offers
+  `search_travel`. Test suite dropped 147→146 (one test removed, several
+  others repointed from `travel` to `python`/`ai` fixtures to keep
+  multi-domain coverage meaningful). Historical records — past
+  `docs/BRANCH-REVIEW-CHECKLIST.md` sections, `docs/reviews/
+  OPUS-REVIEW-VERIFICATION.md`, `docs/plans/dev-rag-phase1a-plan.md` —
+  were deliberately left untouched; they're accurate records of what was
+  true when written, not living specs.
 
 These are still stubs, not working code:
 - `graph.py`, `agent.py` (unwired — nothing imports it), `mcp/compress.py`

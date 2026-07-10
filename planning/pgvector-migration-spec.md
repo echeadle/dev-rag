@@ -124,7 +124,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- Source documents table (replaces SQLite sources table)
 CREATE TABLE sources (
     source_id         TEXT PRIMARY KEY,
-    domain            TEXT NOT NULL,          -- devops | travel | python
+    domain            TEXT NOT NULL,          -- devops | python | ai
     source_path       TEXT NOT NULL,          -- file path or URL
     source_type       TEXT NOT NULL,          -- pdf | url
     version           TEXT,
@@ -362,7 +362,7 @@ async def hybrid_search(
 
     Args:
         query:           Natural-language search query (used for BM25)
-        domain:          Domain to search within (devops | travel | python)
+        domain:          Domain to search within (devops | python | ai)
         query_embedding: BGE-M3 embedding of the query (used for ANN)
         pool:            asyncpg connection pool (initialised at startup)
         n_results:       Number of results to return after RRF fusion

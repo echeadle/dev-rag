@@ -189,7 +189,7 @@ def bm25_search(
 
     Args:
         query:     Natural-language or keyword query string
-        domain:    Restrict search to this domain (devops | travel)
+        domain:    Restrict search to this domain (devops | python | ai)
         db_path:   Path to the SQLite database file
         n_results: Number of results to return
 
@@ -386,7 +386,7 @@ async def hybrid_search(
 
     Args:
         query:             Search query
-        domain:            Domain to search within (devops | travel)
+        domain:            Domain to search within (devops | python | ai)
         chroma_collection: ChromaDB collection for this domain
         db_path:           SQLite database path
         n_results:         Final number of results to return after fusion
@@ -604,7 +604,7 @@ def fts_db(tmp_path: Path) -> Path:
             ('c2', 'devops', 'Use --network=host to share the host network namespace', 'docker-deep-dive.pdf'),
             ('c3', 'devops', 'Running containers as root is a security risk', 'docker-security.pdf'),
             ('c4', 'devops', 'Bridge networks are the default Docker network mode', 'docker-deep-dive.pdf'),
-            ('c5', 'travel', 'Heraklion airport has accessible drop-off zones', 'crete-guide.pdf');
+            ('c5', 'python', 'Extract method to keep functions accessible and short', 'five-lines-of-code.pdf');
     """)
     conn.commit()
     conn.close()
@@ -620,9 +620,9 @@ def test_bm25_returns_results(fts_db):
 
 
 def test_bm25_domain_filter(fts_db):
-    """Travel query should not return devops results."""
-    results = bm25_search("accessible", domain="travel", db_path=fts_db)
-    assert all(r.domain == "travel" for r in results)
+    """Python query should not return devops results."""
+    results = bm25_search("accessible", domain="python", db_path=fts_db)
+    assert all(r.domain == "python" for r in results)
 
 
 def test_bm25_exact_flag_match(fts_db):
@@ -639,7 +639,7 @@ def test_bm25_empty_query_fallback(fts_db):
 
 
 def test_bm25_no_cross_domain_bleed(fts_db):
-    """DevOps query should not return travel results."""
+    """DevOps query should not return python results."""
     results = bm25_search("Docker network", domain="devops", db_path=fts_db)
     assert all(r.domain == "devops" for r in results)
 

@@ -123,7 +123,7 @@ async def test_lists_all_eight_tools(live_api):
             tools = await session.list_tools()
             names = {t.name for t in tools.tools}
     assert names == {
-        "search_devops", "search_travel", "search_python", "search_ai",
+        "search_devops", "search_python", "search_ai",
         "search_all", "get_document", "list_collections", "rag_health",
     }
 

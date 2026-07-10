@@ -163,30 +163,6 @@ async def list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
-            name="search_travel",
-            description=(
-                "Semantic search over the Travel documentation corpus "
-                "(trip reports, guides, accessibility notes, etc.)."
-            ),
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "Natural-language search query",
-                    },
-                    "n_results": {
-                        "type": "integer",
-                        "description": "Number of results to return (default 5, max 20)",
-                        "default": 5,
-                        "minimum": 1,
-                        "maximum": 20,
-                    },
-                },
-                "required": ["query"],
-            },
-        ),
-        types.Tool(
             name="search_python",
             description=(
                 "Semantic search over the Python documentation corpus "
@@ -245,12 +221,12 @@ async def list_tools() -> list[types.Tool]:
             name="search_all",
             description=(
                 "Cross-domain semantic search across every POPULATED corpus "
-                "(currently DevOps + Python; Travel/AI join automatically once "
-                "ingested). Results are genuinely ranked together by relevance "
-                "(reranker-scored, not just per-domain lists stacked together), "
-                "and include a domain tag showing which collection each passage "
-                "came from. SLOW: roughly ~20s per populated domain (~40-50s "
-                "today with 2 domains, more as Travel/AI fill in), since it "
+                "(domains join automatically as they're ingested — see "
+                "rag_health for current coverage). Results are genuinely "
+                "ranked together by relevance (reranker-scored, not just "
+                "per-domain lists stacked together), and include a domain tag "
+                "showing which collection each passage came from. SLOW: "
+                "roughly ~20s per populated domain, since it "
                 "reranks each domain for real cross-domain comparability — use "
                 "when you are unsure which domain holds the answer or need the "
                 "best answer across everything, not for routine lookups (prefer "
@@ -290,8 +266,8 @@ async def list_tools() -> list[types.Tool]:
                     },
                     "domain": {
                         "type": "string",
-                        "description": "Optional domain hint (devops | travel | python)",
-                        "enum": ["devops", "travel", "python"],
+                        "description": "Optional domain hint (devops | python | ai)",
+                        "enum": ["devops", "python", "ai"],
                     },
                 },
                 "required": ["document_id"],
@@ -327,9 +303,6 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
     try:
         if name == "search_devops":
             return await _handle_domain_search("devops", arguments)
-
-        elif name == "search_travel":
-            return await _handle_domain_search("travel", arguments)
 
         elif name == "search_python":
             return await _handle_domain_search("python", arguments)
@@ -378,7 +351,7 @@ async def _handle_domain_search(
     raw = data.get("results") or data.get("documents")
     results: list = raw if isinstance(raw, list) else ([raw] if raw else [])
     text = _format_results(results)
-    label = {"devops": "DevOps", "travel": "Travel", "python": "Python", "ai": "AI"}.get(domain, domain.capitalize())
+    label = {"devops": "DevOps", "python": "Python", "ai": "AI"}.get(domain, domain.capitalize())
     header = f"## {label} search: \"{query}\"\n\n"
     return [types.TextContent(type="text", text=header + text)]
 
