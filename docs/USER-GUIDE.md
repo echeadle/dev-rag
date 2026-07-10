@@ -28,6 +28,20 @@ Run it in the foreground and leave the terminal open, or background it:
 scripts/serve.sh &
 ```
 
+**To start with the reranker on for this run** (better precision, especially useful
+for `search_all` and cross-book questions — see §4 for the latency tradeoff), add
+`--on`:
+
+```bash
+scripts/serve.sh --on
+```
+
+This uses the fast candidate pool (`RERANKER_CANDIDATES=10`, ~15-20s/query) — plain
+`RERANKER_ENABLED=true` on its own would use a much slower 50-candidate pool
+(~112s/query), a real mix-up from 2026-07-10 that `--on` exists specifically to avoid.
+The server-wide *default* stays OFF either way (ADR-012) — `--on` is a per-run opt-in,
+not a change to that decision.
+
 Optional one-time convenience: symlink it onto your `PATH` so you can just type
 `dev-rag-serve` from anywhere —
 
@@ -104,11 +118,11 @@ uv run python -m dev_rag.ingest.pipeline \
   are relative, so this silently points at empty stores instead of erroring). Kill it
   and restart via the script.
 - **A single search feels slow (~15s+)** — the reranker is on. It's off by default
-  for a reason: turning it on globally (`RERANKER_ENABLED=true`) uses a 50-candidate
-  pool (~112s/query) unless you also set `RERANKER_CANDIDATES=10` (~15-20s/query):
-  ```bash
-  RERANKER_ENABLED=true RERANKER_CANDIDATES=10 scripts/serve.sh
-  ```
+  for a reason (ADR-012): the latency isn't worth it as a standing default for an
+  interactive tool. If you started the server with `scripts/serve.sh --on`, that's
+  expected — see §1. If a search is taking ~112s instead of ~15-20s, the server was
+  started with bare `RERANKER_ENABLED=true` and no `RERANKER_CANDIDATES=10` — restart
+  with `--on` instead, which sets both correctly.
 - **`search_all` takes 40-60+ seconds** — expected, not a bug. It reranks each
   populated domain in turn (single-process server, so this is serial, not parallel) —
   it's the "willing to wait for the best cross-domain answer" tool, not a routine

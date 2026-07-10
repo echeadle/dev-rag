@@ -1467,4 +1467,18 @@ Short verify entries for code fixes committed directly to main (no feature
 branch). Newest first. Format: date, commit, one line on what changed, 2–3
 numbered steps with expected output.
 
-*(none yet)*
+### 2026-07-10 — `scripts/serve.sh --on` flag
+
+Adds a `--on` flag to `scripts/serve.sh` that starts the backend with the reranker
+enabled using the fast candidate pool (`RERANKER_ENABLED=true RERANKER_CANDIDATES=10`),
+avoiding the ~112s/query trap of bare `RERANKER_ENABLED=true` (default 50-candidate
+pool). Server-wide default (ADR-012) is unchanged — still OFF; this is a per-run
+opt-in convenience only. `docs/USER-GUIDE.md` updated to document it.
+
+1. `bash -n scripts/serve.sh` — expect no output (valid syntax).
+2. `bash -x scripts/serve.sh --on` (with no server already on port 8000) — expect
+   trace output showing `export RERANKER_ENABLED=true` and
+   `export RERANKER_CANDIDATES=10` before the `uv run uvicorn` line, then
+   `rag_health` reporting `"reranker_enabled": true`.
+3. `scripts/serve.sh` (no flag) — expect `rag_health` reporting
+   `"reranker_enabled": false` (unchanged default behavior).
