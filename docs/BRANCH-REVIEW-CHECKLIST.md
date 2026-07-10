@@ -56,6 +56,10 @@ bottom of this file, in the same commit. Docs-only changes are exempt.
   "Securing DevOps Ingest Review" at the bottom — 7th DevOps book, ran
   cleanly, and a new erosion pattern (genuine topical competition from
   the first security-specific book) verified live, not assumed.
+- **Art of Unit Testing ingest** (feat/ingest-art-of-unit-testing): see
+  "Art of Unit Testing Ingest Review" at the bottom — 3rd python-domain
+  book, and two stale TODO facts (edition, example language) corrected
+  against real grep-verified content instead of being carried forward.
 
 ## Steps (generic + Phase 3 example)
 
@@ -1207,6 +1211,87 @@ Ansible books — same paraphrase question, new competitor).
     ```bash
     git checkout main
     git merge --no-ff feat/ingest-securing-devops
+    git push origin main
+    ```
+
+---
+
+# Art of Unit Testing Ingest Review (feat/ingest-art-of-unit-testing)
+
+**What this review verifies.** This branch ingests the 3rd python-domain
+book (The Art of Unit Testing, 2nd Edition, Osherove) — no pipeline code
+change, the tracked edits are the new baseline and the usual doc updates.
+
+**Two stale facts corrected before ingesting, not carried forward.**
+`docs/TODO.md` and `current_context.md` both said "3rd Edition
+(Osherove & Khorikov)" — the file actually sitting in `data/books/` is
+the 2nd Edition (Osherove solo). Ed confirmed 2nd Edition is correct
+(the file in hand) rather than sourcing the 3rd. Separately, the TODO
+entry claimed "examples in JavaScript" — grep-verified wrong: the book
+is C#/.NET-based (200+ NUnit, 161 .NET, 74 Typemock, 28 C#, 19 Rhino
+Mocks mentions vs. 12 incidental JavaScript ones). Both corrected in
+place rather than assumed correct because they'd been written down
+already — same principle as the Five Lines of Code
+"TypeScript-not-Python" correction earlier in this project.
+
+**What "pass" looks like.** 146 tests still green (no code changed).
+`python` domain 1410/1410 in sync (929 + 481). Stage-8 verify passed
+first try (dist=0.450). `python-003`'s GIL negative re-checked, still
+holds (0 mentions, grep-verified — this book is testing-practice
+focused, not language-internals). The existing 6-question python
+baseline reproduces clean, 100% unchanged; new baseline
+`eval/baselines/2026-07-10_python_3books_6q.json`.
+
+## Steps
+
+1. `git checkout feat/ingest-art-of-unit-testing`
+2. `git diff main --stat` — expect the new baseline
+   `eval/baselines/2026-07-10_python_3books_6q.json` and doc updates
+   (`docs/TODO.md`, `current_context.md`). Anything under `src/`,
+   `mcp/`, `tests/`, or `eval/*.py` in the stat is unexpected — stop and
+   ask why.
+3. `uv run pytest tests mcp/tests` — expect **146 passed** (unchanged —
+   confirms no code drifted).
+4. Confirm the corpus loaded at parity:
+   ```bash
+   sqlite3 data/dev_rag.db \
+     "SELECT domain, count(*) FROM chunks WHERE status='active' GROUP BY domain;
+      SELECT 'fts', count(*) FROM chunks_fts;"
+   ```
+   — expect `devops|3797`, `python|1410`, `ai|608`, `fts|5815`.
+5. Confirm the new book is queryable (verify stage against the live
+   stores):
+   ```bash
+   uv run python -m dev_rag.ingest.pipeline \
+       --source data/books/The_Art_of_Unit_Testing_Second_Edition.pdf \
+       --domain python --start-stage 8 \
+       --query "What is the Humble Object pattern for testing?"
+   ```
+   — expect `[8 verify] parity OK (1410); top hit
+   the_art_of_unit_testing_second_edition_...`
+6. Start the server with defaults:
+   ```bash
+   uv run uvicorn dev_rag.api:app --host 127.0.0.1 --port 8000
+   ```
+7. In a second terminal — reproduce the python baseline (deterministic):
+   ```bash
+   uv run python eval/run_eval.py --domain python --no-save \
+       --compare eval/baselines/2026-07-09_python_2books_6q.json
+   ```
+   — expect all metrics flat at 100% (this book doesn't touch the
+   existing 6 questions' expected sources).
+8. OPTIONAL — spot-check the corrected facts directly:
+   ```bash
+   grep -c "NUnit" data/chunks/the_art_of_unit_testing_second_edition_chunks.json
+   grep -ic "javascript" data/chunks/the_art_of_unit_testing_second_edition_chunks.json
+   ```
+   — expect NUnit >> JavaScript mentions, confirming the C#/.NET
+   correction.
+9. Ctrl-C the server.
+10. If satisfied:
+    ```bash
+    git checkout main
+    git merge --no-ff feat/ingest-art-of-unit-testing
     git push origin main
     ```
 
