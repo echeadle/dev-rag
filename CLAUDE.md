@@ -39,6 +39,19 @@ one-line rule under ## Lessons, so it never happens again.
   running for over an hour after a later `kill %1` silently killed
   nothing (wrong/empty job table in that call's fresh shell), only caught
   during an unrelated cleanup sweep.
+- A background ingest can be killed by the environment (not a crash — no
+  traceback, no OOM in `journalctl`) on large books; ~33 min of embedding
+  seems to be near a ceiling. If it happens: check whether
+  `data/embeddings/{slug}_embeddings.json` was written before assuming
+  progress is lost, then resume cheaply with `--start-stage 7` (it reuses
+  the file) rather than re-running the whole ~30+ min embed stage. Reason:
+  2026-07-09, Mastering Ubuntu Server's ingest (1017 chunks, ~33 min
+  embed) was killed right at the stage 6→7 boundary; the embeddings file
+  had already been written (the embed stage buffers all vectors in memory
+  and writes the JSON once at the very end — no per-batch checkpoint), so
+  this specific kill was recoverable, but a kill mid-batch would not have
+  been. Worth a pipeline checkpoint improvement if books keep growing
+  (tracked in docs/TODO.md backlog).
 
 ## Toolchain — uv only
 - **Use `uv` exclusively. Never call `pip` directly.** Use `uv run …`, `uv add …`,
@@ -217,6 +230,27 @@ Ingest tests never load real BGE-M3 — the model is always mocked.
   chunk (a RAGAS-metrics passage leaning generation-side); left as-is
   rather than loosening the check. First official AI baseline:
   `eval/baselines/2026-07-09_ai_1book_7q.json`.
+- **Mastering Ubuntu Server ingest (2026-07-09,
+  `feat/ingest-mastering-ubuntu-server`):** 6th DevOps book, no pipeline
+  code changes. 1017 chunks (583 pages, 567 kept post-clean); `devops`
+  domain now 3089/3089 in_sync. **Background ingest was killed by the
+  environment right at the stage 6→7 boundary** (~33 min into embedding,
+  no crash/traceback, no OOM in journalctl) — recovered cheaply via
+  `--start-stage 7` since the embeddings JSON had already been written;
+  see the new Lessons entry above. Stage-8 verify passed on that resumed
+  run (dist=0.306). All existing negatives clean (Podman/GitLab/Istio/
+  Pulumi: 0 mentions, grep-verified). **Genuine R@3 erosion, not a false
+  alarm:** `devops-para-001b` (a paraphrase question expecting Docker
+  Deep Dive) flipped from passing to failing — checked live: the correct
+  chunk is now ranked #5, crowded out by Ansible content (RLA rank 1,
+  Mastering Ansible rank 2) as the larger corpus shifts RRF/BM25
+  statistics. This is a recurrence of the exact erosion pattern already
+  documented when RLA was first ingested ("recorded not fixed"), not a
+  new failure mode. New baseline
+  `eval/baselines/2026-07-09_hybrid_rrf_6books_39q.json`: R@1 84.6% (flat),
+  R@3 96.2→92.3% (-3.8, back off the ceiling), MRR 89.7→89.2 (-0.5),
+  composite 90.0→88.2 (-1.7). Two failures: `devops-020` (pre-existing)
+  and `devops-para-001b` (this erosion).
 
 These are still stubs, not working code:
 - `graph.py`, `agent.py` (unwired — nothing imports it), `mcp/compress.py`

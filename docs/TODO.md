@@ -248,10 +248,17 @@ Books and sources to ingest as the system comes online:
   no erosion. `devops-020`'s one failure is the pre-existing documented
   source-competition issue, unrelated to this ingest.
 - [ ] Additional Ansible book(s) — confirm titles from shelf
-- [ ] Mastering Ubuntu Server, 4th Edition (LaCroix, Packt 2024) — **already owned**;
-  covers Ubuntu 22.04 LTS, server administration, Ansible automation, container
-  orchestration, and security; fills the Linux security reference gap;
-  ingest after Docker and Ansible books are working
+- [x] Mastering Ubuntu Server, 4th Edition (LaCroix, Packt 2024) — ✅
+  2026-07-09 (`feat/ingest-mastering-ubuntu-server`): 1017 chunks, 583
+  pages (567 kept), `devops` domain now 3089/3089 in_sync (6th book).
+  Background ingest was killed by the environment ~33 min into embedding
+  (no crash — recovered via `--start-stage 7`, no re-embed needed; see
+  CLAUDE.md Lessons). Existing negatives (Podman/GitLab/Istio/Pulumi)
+  clean. New 39q baseline
+  `eval/baselines/2026-07-09_hybrid_rrf_6books_39q.json`: R@3 dropped
+  96.2→92.3% (-3.8) — `devops-para-001b` flipped to failing, a
+  recurrence of the same Ansible-vs-Docker erosion pattern already
+  recorded at the RLA ingest (not a new bug — recorded, not fixed).
 - [ ] Securing DevOps (Vehent, Manning 2018) — **already owned**;
   test-driven security, continuous security monitoring, risk assessment,
   securing cloud services and web applications; written by Mozilla Firefox
@@ -408,6 +415,16 @@ is working and evaluated.
 - [ ] Multi-source coverage metric in eval harness
 - [ ] Graph-lift metric (after GraphRAG is implemented)
 - [ ] Cross-domain `search_all` ranking improvements beyond Phase 5b
+- [ ] **Ingest pipeline: checkpoint the embed stage.** Found 2026-07-09
+  (Mastering Ubuntu Server ingest, killed by the environment ~33 min into
+  embedding): stage 6 buffers all vectors in memory and writes
+  `data/embeddings/{slug}_embeddings.json` once at the very end — no
+  per-batch checkpoint. That specific kill happened to land right after
+  the last batch finished, so `--start-stage 7` recovered cheaply, but a
+  kill mid-batch would have lost the entire ~30+ min embed run with
+  nothing to resume from. Worth adding incremental batch-level
+  checkpointing if books keep growing past ~500 pages (embed time scales
+  with page/chunk count — this was the 3rd-largest book so far).
 
 ---
 
