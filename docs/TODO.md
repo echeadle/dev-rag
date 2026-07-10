@@ -322,12 +322,22 @@ Books and sources to ingest as the system comes online:
   `eval/baselines/2026-07-09_python_2books_6q.json`.
   cryptography, TLS, authentication, OAuth 2.0, attack resistance;
   directly relevant to securing FastAPI backends and the Ansible security project
-- [ ] The Art of Unit Testing, 2nd Edition (Osherove, Manning) — **already owned**,
-  file confirmed present in `data/books/` 2026-07-10 (previous TODO entries
-  said "3rd Edition" — wrong, corrected against the actual file); readable
-  and maintainable tests, fakes/stubs/mocks, isolation frameworks, legacy
-  code, organisation-wide test strategies; examples in JavaScript but
-  principles are language-agnostic and directly applicable to Python pytest work
+- [x] The Art of Unit Testing, 2nd Edition (Osherove, Manning) — ✅ 2026-07-10
+  (`feat/ingest-art-of-unit-testing`): 481 chunks, 294 pages (281 kept),
+  `python` domain now 1410/1410 in_sync (3rd book, alongside Five Lines of
+  Code and Practices of the Python Pro). Stage-8 verify passed first try
+  (dist=0.450). **Two stale TODO facts corrected against real content,
+  not guessed:** (1) previous entries said "3rd Edition" — wrong, the file
+  actually present is the 2nd Edition (Osherove solo, no Khorikov); (2)
+  previous entries said "examples in JavaScript" — wrong, grep-verified
+  the book is C#/.NET-based (200+ NUnit, 161 .NET, 74 Typemock, 28 C#, 19
+  Rhino Mocks mentions vs. 12 incidental JavaScript ones). Principles
+  (fakes/stubs/mocks, isolation frameworks, Humble Object pattern, legacy
+  code, org-wide test strategy) are still language-agnostic and directly
+  applicable to Python pytest work. `python-003`'s GIL negative re-checked,
+  still holds (0 mentions, grep-verified). Existing 6-question baseline
+  reproduces clean, 100% unchanged. New baseline
+  `eval/baselines/2026-07-10_python_3books_6q.json`.
 - [ ] Prioritise books that cover: internals, async, production patterns,
   packaging, refactoring, security, testing
 
