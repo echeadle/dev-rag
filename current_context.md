@@ -31,6 +31,12 @@ Backend persistence (always-on daemon) was explicitly deferred — see
 Also saved two project memories this session:
 [[graphrag-graphify-reference]] and [[agent-py-pydantic-ai-capabilities]].
 
+Added `docs/USER-GUIDE.md` (committed directly to main, docs-only): a
+day-to-day usage reference — starting the server, an example of asking
+Claude a question and which MCP tool it maps to, how to ingest more PDFs,
+and the three gotchas hit this session (connection errors, the cwd/empty-
+results bug, the reranker candidate-count trap).
+
 ## Next Action
 Nothing in progress. Candidates for next session: (a) live with the
 manual-start-from-anywhere workflow for a while before deciding on backend
@@ -50,9 +56,9 @@ results — this is a deliberate, documented gap (see `docs/TODO.md`), not
 an oversight.
 
 ## Housekeeping (optional, not blocking)
-A backend server (`scripts/serve.sh`, reranker OFF/default) is currently
-running in the background, started from `/tmp` during verification. Fine
-to leave running; kill by PID (not job number) when no longer wanted.
+None — the backend server that had been running since verification was
+stopped (killed by PID) at the end of this session. Nothing running in
+the background; start with `scripts/serve.sh` next time it's needed.
 
 ## Phase
 Corpus-building track / MCP registration phase 1 complete. No active
