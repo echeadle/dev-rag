@@ -30,10 +30,8 @@ N/A — no task in progress.
 None.
 
 ## Housekeeping (optional, not blocking)
-8 local feature branches are sitting around, all already merged into
-`main` — safe to delete whenever convenient
-(`git branch --merged main` to list them), not done automatically since
-branch deletion wasn't asked for.
+None — all 8 merged local feature branches were deleted 2026-07-10.
+Only `main` remains locally.
 
 ## Phase
 Corpus-building track, between books. No active implementation phase.
