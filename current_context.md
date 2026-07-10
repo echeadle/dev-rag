@@ -2,50 +2,45 @@
 _Last updated: 2026-07-09_
 
 ## Active File
-data/books/Practices_of_the_Python_Pro.pdf ingest (no source code touched
-— pure data addition), docs/TODO.md, CLAUDE.md, eval/baselines/.
+data/books/UNLOCKING_DATA_WITH_GENERATIVE_AI_AND_RAG.pdf ingest (no
+source code touched — pure data addition), data/evaluation/ai_questions.yaml
+(header comment updated only), docs/TODO.md, CLAUDE.md, eval/baselines/.
 
 ## Current Step
-Ingested Practices of the Python Pro (2nd python-domain book) on branch
-`feat/ingest-practices-python-pro`, NOT yet merged. 397 chunks, 250
-pages (237 kept), `python` domain now 929/929 in_sync, `devops`
-unaffected at 2072. Stage-8 verify passed first try. Tried adding a new
-"added-value" eval question (matching devops-034's precedent) but parked
-it — genuine semantic overlap between the two python books meant every
-candidate query (coupling, type hints, cProfile, pytest) still retrieved
-Five Lines of Code first on dense search, even where BM25 correctly
-favored the new book. Declined to cherry-pick a winning phrasing.
-Existing 6-question baseline reproduces clean, 100% unchanged. New
-baseline `eval/baselines/2026-07-09_python_2books_6q.json`.
+Ingested Bourne's RAG book on branch `feat/ingest-bourne-rag-ai-domain`,
+NOT yet merged. **This opens the AI domain for the first time** — 608
+chunks, 346 pages (334 kept), `ai` domain now 608/608 in_sync, other
+domains unaffected. Stage-8 verify passed first try. The 7-question
+`ai_questions.yaml` eval set already existed (pre-written, gated on
+nothing) — ran unmodified, all 7 questions retrieve top-1 from this
+book. New baseline `eval/baselines/2026-07-09_ai_1book_7q.json`.
 
 ## Next Action
 1. Write Branch Review Checklist section (ingest-style).
 2. Ed reviews + merges.
 
 ## Done When
-- [x] Practices of the Python Pro ingested, corpus parity confirmed (929/929/929)
+- [x] Bourne's RAG book ingested, AI domain corpus parity confirmed (608/608/608)
 - [x] Stage-8 verify passing
-- [x] python-003 (GIL) negative re-checked live, still holds
-- [x] Added-value eval question attempted, parked with a documented reason
-- [x] Existing 6q python baseline reproduces at 100%, no regressions
+- [x] Existing ai_questions.yaml eval set run against real content for the first time
+- [x] ai-005's chunk_match miss investigated, confirmed a scoring artifact not a gap
 - [x] 147 tests still green (no code changed)
 - [ ] Branch Review Checklist section written
 - [ ] Ed reviews + merges
 
 ## Blockers
-None. Parked: structure+enrich (deferred), GraphRAG (no spec, P8),
-pgvector (P7), headroom-ai, added-value python-domain eval question
-(see above), Art of Unit Testing / Mastering Ubuntu Server / Securing
-DevOps / Bourne (AI domain) — none yet placed in data/books/.
+None. Parked (from the prior session): the Practices-of-the-Python-Pro
+added-value eval question. Still not placed in data/books/: Art of Unit
+Testing, Mastering Ubuntu Server, Securing DevOps, RAG-Driven Generative
+AI (Rothman), A Simple Guide to RAG (Kimothi), Stable Diffusion book.
 
-**Doc hygiene note found while updating docs/TODO.md:** the "Practices
-of the Python Pro" bullet had an orphaned fragment attached below it
-("cryptography, TLS, authentication, OAuth 2.0, attack resistance...")
-that reads like it belongs to a different, since-deleted book entry (a
-security/crypto title, not Practices of the Python Pro). Left as-is —
-not guessing what the missing title was. Worth Ed's eye next time he's
-in docs/TODO.md.
+**Doc hygiene note (carried over, still unresolved):** docs/TODO.md's
+"Practices of the Python Pro" bullet still has an orphaned fragment
+below it ("cryptography, TLS, authentication, OAuth 2.0...") that reads
+like a different, since-deleted book entry. Not touched — needs Ed's
+input on what the missing title was.
 
 ## Phase
-Corpus: 7 books / 3001 chunks / 2 domains populated (devops, python).
-No active implementation phase — corpus-building track.
+Corpus: 8 books / 3609 chunks / **3 domains populated** (devops, python,
+ai — travel still empty). No active implementation phase —
+corpus-building track.

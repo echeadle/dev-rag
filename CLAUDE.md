@@ -199,6 +199,24 @@ Ingest tests never load real BGE-M3 — the model is always mocked.
   unchanged**, confirming the new book adds coverage without regressing
   anything measured. New baseline
   `eval/baselines/2026-07-09_python_2books_6q.json`.
+- **Bourne RAG book ingest — AI domain opened (2026-07-09,
+  `feat/ingest-bourne-rag-ai-domain`):** first book in the `ai` domain
+  (Unlocking Data with Generative AI and RAG, Bourne). 608 chunks (346
+  pages, 334 kept post-clean); `ai` domain now 608/608 in_sync, other
+  domains unaffected. Stage-8 verify passed first try (dist=0.270). The
+  `ai_questions.yaml` eval set (7 questions) already existed, pre-written
+  before any AI content was ingested and gated on nothing
+  (`expected_source: null` throughout, meant to be answerable by
+  whichever AI-domain book landed first) — ran unmodified against the
+  new corpus. All 7 questions retrieve top-1 from Bourne's book;
+  retrieval_at_k/MRR/composite read n/a by design (no expected_source to
+  score against); chunk_match 80% (4/5 applicable, 2 N/A by design).
+  The one chunk_match miss (`ai-005`) is a chunk-boundary keyword
+  co-occurrence artifact, not a coverage gap — verified the book has 376
+  "retrieval" mentions overall, just not in the specific top-ranked
+  chunk (a RAGAS-metrics passage leaning generation-side); left as-is
+  rather than loosening the check. First official AI baseline:
+  `eval/baselines/2026-07-09_ai_1book_7q.json`.
 
 These are still stubs, not working code:
 - `graph.py`, `agent.py` (unwired — nothing imports it), `mcp/compress.py`
