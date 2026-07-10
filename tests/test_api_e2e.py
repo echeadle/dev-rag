@@ -212,7 +212,6 @@ def test_collections_report_real_chroma_counts(client):
     by_name = {c["name"]: c for c in data["collections"]}
     assert set(by_name) == set(settings.valid_domains)
     assert by_name["devops"] == {"name": "devops", "documents": 3, "status": "ready"}
-    assert by_name["travel"] == {"name": "travel", "documents": 0, "status": "empty"}
 
 
 def test_health_reports_real_counts_and_detects_drift(client):

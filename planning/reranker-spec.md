@@ -52,9 +52,8 @@ the most relevant answer to the question.
    `sentence-transformers` or the `rerankers` library. No outbound call,
    no per-query cost, consistent with the project's open-ecosystem principle.
 
-3. **Multilingual.** Handles the Travel corpus (English prose, some French
-   and Greek place names) as well as the DevOps corpus without any
-   domain-specific configuration.
+3. **Multilingual.** Handles non-English content without any
+   domain-specific configuration, if a future corpus ever needs it.
 
 4. **Reasonable size.** The v2-m3 variant is ~568M parameters — similar to
    BGE-M3 itself. It will run on CPU for a personal corpus (low query volume)
@@ -598,7 +597,7 @@ concatenated. The reranker enables a true cross-domain unified ranking:
 ```
 devops_candidates (top 25 from hybrid)  ┐
                                          ├──► reranker ──► unified top-10
-travel_candidates (top 25 from hybrid)  ┘
+python_candidates (top 25 from hybrid)  ┘
 ```
 
 The cross-encoder doesn't care which domain a candidate came from — it scores

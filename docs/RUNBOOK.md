@@ -40,7 +40,7 @@ uv run python -m dev_rag.ingest.pipeline \
     --query "How does Docker isolate containers from each other?"
 ```
 
-Domains: `devops | travel | python | ai` (see `settings.py`).
+Domains: `devops | python | ai` (see `settings.py`).
 
 `--query` must be a question **this specific book** should answer — stage 8
 verifies the new book appears in the top-5 results for it. A question another

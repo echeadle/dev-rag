@@ -321,10 +321,13 @@ Books and sources to ingest as the system comes online:
 - [ ] Prioritise books that cover: internals, async, production patterns,
   packaging, refactoring, security, testing
 
-### Travel Domain
-- [ ] Add Crete research documents
-- [ ] Add Athens research documents
-- [ ] Add any future trip research
+**Travel domain removed 2026-07-09 (Ed's call).** dev-rag never had any
+travel books to ingest — travel research is a web-search task, not a
+personal-library RAG task. Removed as a valid domain everywhere:
+`settings.valid_domains`, the `search_travel` MCP tool, the empty
+`travel_questions.yaml` stub, and travel references across
+DEV-RAG-ARCHITECTURE.md/RUNBOOK.md/README.md. See
+`feat/remove-travel-domain`.
 
 ---
 

@@ -60,7 +60,8 @@ Once the system is working, create and continually expand:
 ```
 data/evaluation/
 ├── devops_questions.yaml
-├── travel_questions.yaml
+├── python_questions.yaml
+├── ai_questions.yaml
 └── cross_domain_questions.yaml
 ```
 
@@ -109,7 +110,7 @@ automatically without manual inspection for most cases.
 |-------|------|----------|-------------|
 | `id` | string | yes | Unique identifier, e.g. `devops-001` |
 | `question` | string | yes | The natural language question |
-| `domain` | string | yes | `devops`, `travel`, or `cross_domain` |
+| `domain` | string | yes | `devops`, `python`, `ai`, or `cross_domain` |
 | `category` | string | yes | See question categories below |
 | `failure_mode` | string | yes | The specific weakness being tested |
 | `expected_source` | string/null | yes | Filename or URL that should appear in results; null = any |
@@ -649,7 +650,8 @@ dev-rag/
 ├── data/
 │   └── evaluation/
 │       ├── devops_questions.yaml
-│       ├── travel_questions.yaml
+│       ├── python_questions.yaml
+│       ├── ai_questions.yaml
 │       └── cross_domain_questions.yaml
 ├── eval/
 │   ├── run_eval.py          # Main entry point
@@ -976,7 +978,8 @@ from reporter import print_report, save_results
 
 QUESTION_FILES = [
     Path("data/evaluation/devops_questions.yaml"),
-    Path("data/evaluation/travel_questions.yaml"),
+    Path("data/evaluation/python_questions.yaml"),
+    Path("data/evaluation/ai_questions.yaml"),
     Path("data/evaluation/cross_domain_questions.yaml"),
 ]
 
@@ -1030,7 +1033,7 @@ def _failed(score) -> bool:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default="http://localhost:8000")
-    parser.add_argument("--domain", choices=["devops", "travel", "cross_domain"])
+    parser.add_argument("--domain", choices=["devops", "python", "ai", "cross_domain"])
     parser.add_argument("--category", nargs="+")
     parser.add_argument("--graph", action="store_true", help="Include graph traversal")
     parser.add_argument("--compare", help="Path to previous results JSON for delta comparison")

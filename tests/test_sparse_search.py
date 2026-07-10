@@ -13,14 +13,14 @@ MIGRATIONS = Path(__file__).resolve().parent.parent / "migrations"
 SOURCES = [
     ("ddd", "devops", "docker-deep-dive.pdf"),
     ("sec", "devops", "docker-security.pdf"),
-    ("crete", "travel", "crete-guide.pdf"),
+    ("fpp", "python", "five-lines-of-code.pdf"),
 ]
 CHUNKS = [
     ("c1", "ddd", "devops", "Docker secrets store sensitive data securely"),
     ("c2", "ddd", "devops", "Use --network=host to share the host network namespace"),
     ("c3", "sec", "devops", "Running containers as root is a security risk"),
     ("c4", "ddd", "devops", "Bridge networks are the default Docker network mode"),
-    ("c5", "crete", "travel", "Heraklion airport has accessible drop-off zones"),
+    ("c5", "fpp", "python", "Extract method to keep functions accessible and short"),
 ]
 
 
@@ -55,8 +55,8 @@ def test_bm25_carries_source_filename(db):
 
 
 def test_bm25_domain_filter(db):
-    results = bm25_search("accessible", domain="travel", db_path=db)
-    assert results and all(r.domain == "travel" for r in results)
+    results = bm25_search("accessible", domain="python", db_path=db)
+    assert results and all(r.domain == "python" for r in results)
 
 
 def test_bm25_no_cross_domain_bleed(db):

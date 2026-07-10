@@ -2,50 +2,52 @@
 _Last updated: 2026-07-09_
 
 ## Active File
-data/books/MasteringUbuntuServer.pdf ingest (no source code touched —
-pure data addition), docs/TODO.md, CLAUDE.md, eval/baselines/.
+src/dev_rag/settings.py, mcp/mcp_server.py, eval/loader.py, eval/run_eval.py
+(code changes), plus tests/*, mcp/tests/*, and doc/spec updates across
+DEV-RAG-ARCHITECTURE.md, RUNBOOK.md, README.md, pyproject.toml,
+docs/TODO.md, planning/*.md.
 
 ## Current Step
-Ingested Mastering Ubuntu Server (6th DevOps book) on branch
-`feat/ingest-mastering-ubuntu-server`, NOT yet merged. 1017 chunks, 583
-pages (567 kept), `devops` domain now 3089/3089 in_sync. **Operational
-incident, recovered cleanly:** the background ingest was killed by the
-environment right at the stage 6→7 boundary (~33 min into embedding, no
-crash) — the embeddings JSON had already been written, so
-`--start-stage 7` resumed without re-embedding. Documented as a Lesson
-in CLAUDE.md + a backlog item (embed-stage checkpointing) in
-docs/TODO.md. All existing negatives clean. **Genuine, documented
-erosion:** `devops-para-001b` flipped from passing to failing — verified
-live, a recurrence of the same Ansible-vs-Docker corpus-competition
-pattern already recorded when RLA was first ingested. New baseline
-`eval/baselines/2026-07-09_hybrid_rrf_6books_39q.json`: R@3 96.2→92.3%
-(-3.8), MRR -0.5, composite -1.7.
+Removed the `travel` domain from dev-rag entirely, on branch
+`feat/remove-travel-domain`, NOT yet merged — Ed's call: no travel books
+exist or are planned, travel research belongs in web search, not this
+RAG system. Full removal, not just docs cleanup:
+- `settings.valid_domains` no longer includes `travel`
+- `search_travel` MCP tool removed (registration, dispatch, label, docs)
+- `data/evaluation/travel_questions.yaml` deleted (was a never-populated stub)
+- `eval/loader.py`/`eval/run_eval.py` no longer reference it
+- Tests repointed from `travel` fixtures to `python`/`ai` fixtures where a
+  second domain was needed for meaningful multi-domain coverage
+- DEV-RAG-ARCHITECTURE.md's premise statement + ADR-002/007/011,
+  RUNBOOK.md, README.md, pyproject.toml, and all `planning/*.md` specs
+  updated
+- Historical records deliberately left alone: past
+  docs/BRANCH-REVIEW-CHECKLIST.md sections, docs/reviews/
+  OPUS-REVIEW-VERIFICATION.md, docs/plans/dev-rag-phase1a-plan.md
+
+Live-verified, not just unit-tested: `/health` no longer lists travel,
+`POST /search {"domain": "travel"}` is correctly rejected with a clear
+validation error, and the MCP `list_tools()` no longer offers
+`search_travel`.
 
 ## Next Action
-1. Write Branch Review Checklist section (ingest-style).
+1. Write Branch Review Checklist section.
 2. Ed reviews + merges.
 
 ## Done When
-- [x] Mastering Ubuntu Server ingested, corpus parity confirmed (3089/3089/3089)
-- [x] Recovered from a background-task kill without re-running embedding
-- [x] Existing negatives (Podman/GitLab/Istio/Pulumi) re-checked live
-- [x] New 6-book baseline promoted; erosion investigated and understood, not just noted
-- [x] 147 tests still green (no code changed)
+- [x] travel removed from settings.valid_domains
+- [x] search_travel MCP tool fully removed
+- [x] travel_questions.yaml deleted, loader/run_eval updated
+- [x] All tests updated and passing (146, was 147)
+- [x] Live-verified: /health, /search rejection, MCP tool list
+- [x] Docs/specs updated (architecture, runbook, README, pyproject, planning/*)
 - [ ] Branch Review Checklist section written
 - [ ] Ed reviews + merges
 
 ## Blockers
-None. Parked: Practices-of-Python-Pro added-value eval question (prior
-session), embed-stage checkpointing (new backlog item, not urgent).
-Still not placed in data/books/: Securing DevOps, Art of Unit Testing,
-Rothman/Kimothi (AI, not yet purchased), Stable Diffusion book.
-
-**Doc hygiene note (carried over, still unresolved):** docs/TODO.md's
-"Practices of the Python Pro" bullet still has an orphaned fragment
-below it ("cryptography, TLS, authentication, OAuth 2.0...") — needs
-Ed's input on what the missing title was.
+None.
 
 ## Phase
-Corpus: 9 books / 4626 chunks / 3 domains populated (devops, python,
-ai — travel still empty). No active implementation phase —
-corpus-building track.
+Corpus: 9 books / 4626 chunks / 3 domains (devops, python, ai) — `travel`
+no longer exists as a domain concept. No active implementation phase —
+this was a scope-correction task, not corpus building.

@@ -45,11 +45,11 @@ FAKE_PYTHON_RESULTS = [
     }
 ]
 
-FAKE_TRAVEL_RESULTS = [
+FAKE_AI_RESULTS = [
     {
-        "source": "crete-guide.md",
-        "domain": "travel",
-        "content": "Heraklion airport has scooter-friendly drop-off zones near the terminal.",
+        "source": "unlocking-rag.md",
+        "domain": "ai",
+        "content": "Hybrid RAG combines dense and sparse retrieval via reciprocal rank fusion.",
         "relevance_score": 0.95,
     }
 ]
@@ -147,22 +147,6 @@ async def test_search_devops_empty_results():
 
 
 # ---------------------------------------------------------------------------
-# _handle_domain_search (travel)
-# ---------------------------------------------------------------------------
-
-@pytest.mark.asyncio
-@respx.mock
-async def test_search_travel_success():
-    respx.post("http://localhost:8000/search").mock(
-        return_value=httpx.Response(200, json={"results": FAKE_TRAVEL_RESULTS})
-    )
-    result = await _handle_domain_search("travel", {"query": "scooter accessibility Crete"})
-    text = result[0].text
-    assert "Travel search" in text
-    assert "crete-guide.md" in text
-
-
-# ---------------------------------------------------------------------------
 # _handle_search_all — Phase 5b: /health-driven domain discovery,
 # force_rerank on every fan-out call, results sorted by relevance_score
 # across domains (not concatenated in a fixed order).
@@ -170,7 +154,7 @@ async def test_search_travel_success():
 
 def _health_response(populated: dict[str, int]) -> httpx.Response:
     """populated: {domain: chroma_chunks}. Unlisted domains default to 0."""
-    all_domains = {"devops": 0, "travel": 0, "python": 0, "ai": 0, **populated}
+    all_domains = {"devops": 0, "python": 0, "ai": 0, **populated}
     return httpx.Response(200, json={
         "status": "ok",
         "store_parity": {
@@ -183,7 +167,7 @@ def _health_response(populated: dict[str, int]) -> httpx.Response:
 @pytest.mark.asyncio
 @respx.mock
 async def test_search_all_only_queries_populated_domains():
-    """Only devops populated -> search_all must not call travel/python/ai."""
+    """Only devops populated -> search_all must not call python/ai."""
     respx.get("http://localhost:8000/health").mock(
         return_value=_health_response({"devops": 1495})
     )
@@ -280,20 +264,19 @@ async def test_search_python_label_in_header():
     result = await _handle_domain_search("python", {"query": "generators"})
     assert "Python search" in result[0].text
     assert "Devops" not in result[0].text
-    assert "Travel" not in result[0].text
 
 
 # ---------------------------------------------------------------------------
-# _handle_search_all — three populated domains
+# _handle_search_all — all three domains populated
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
 @respx.mock
 async def test_search_all_fanout_three_domains():
-    """3 populated domains -> fan-out queries devops, travel, AND python
-    (not ai, which /health reports as empty), with budget split 3 ways."""
+    """All 3 valid domains populated -> fan-out queries devops, python,
+    AND ai, with budget split 3 ways."""
     respx.get("http://localhost:8000/health").mock(
-        return_value=_health_response({"devops": 1495, "travel": 200, "python": 532})
+        return_value=_health_response({"devops": 1495, "python": 532, "ai": 608})
     )
     calls = []
 
@@ -304,10 +287,10 @@ async def test_search_all_fanout_three_domains():
         domain = body.get("domain", "")
         if domain == "devops":
             return httpx.Response(200, json={"results": FAKE_RESULTS})
-        elif domain == "travel":
-            return httpx.Response(200, json={"results": FAKE_TRAVEL_RESULTS})
         elif domain == "python":
             return httpx.Response(200, json={"results": FAKE_PYTHON_RESULTS})
+        elif domain == "ai":
+            return httpx.Response(200, json={"results": FAKE_AI_RESULTS})
         else:
             return httpx.Response(500)
 
@@ -316,11 +299,9 @@ async def test_search_all_fanout_three_domains():
     text = result[0].text
     # All three populated domains should appear in the merged results
     assert "docker-compose.md" in text      # devops
-    assert "crete-guide.md" in text        # travel
     assert "fluent-python.pdf" in text      # python
-    # ai is unpopulated (per /health) — must not be queried at all
-    assert "ai" not in calls
-    assert sorted(calls) == ["devops", "python", "travel"]
+    assert "unlocking-rag.md" in text       # ai
+    assert sorted(calls) == ["ai", "devops", "python"]
 
 
 @pytest.mark.asyncio
@@ -329,7 +310,7 @@ async def test_search_all_fanout_on_500():
     """One populated domain's /search call 500s -> the others' results
     still come back (per-domain failure tolerance, not a hard failure)."""
     respx.get("http://localhost:8000/health").mock(
-        return_value=_health_response({"devops": 1495, "travel": 200, "python": 532})
+        return_value=_health_response({"devops": 1495, "python": 532, "ai": 608})
     )
 
     def side_effect(request):
@@ -337,15 +318,15 @@ async def test_search_all_fanout_on_500():
         domain = body.get("domain", "")
         if domain == "devops":
             return httpx.Response(200, json={"results": FAKE_RESULTS})
-        elif domain == "travel":
-            return httpx.Response(200, json={"results": FAKE_TRAVEL_RESULTS})
+        elif domain == "ai":
+            return httpx.Response(200, json={"results": FAKE_AI_RESULTS})
         else:
             return httpx.Response(500, json={"error": "server error"})
 
     respx.post("http://localhost:8000/search").mock(side_effect=side_effect)
     result = await _handle_search_all({"query": "anything"})
     text = result[0].text
-    assert "docker-compose.md" in text and "crete-guide.md" in text
+    assert "docker-compose.md" in text and "unlocking-rag.md" in text
     assert "fluent-python.pdf" not in text
 
 
@@ -391,7 +372,7 @@ async def test_list_collections_success():
         return_value=httpx.Response(200, json={
             "collections": [
                 {"name": "devops", "documents": 142},
-                {"name": "travel", "documents": 38},
+                {"name": "python", "documents": 38},
             ]
         })
     )
@@ -409,7 +390,7 @@ async def test_list_collections_tries_multiple_paths():
         return_value=httpx.Response(404)
     )
     respx.get("http://localhost:8000/domains").mock(
-        return_value=httpx.Response(200, json={"domains": ["devops", "travel"]})
+        return_value=httpx.Response(200, json={"domains": ["devops", "python"]})
     )
     result = await _handle_list_collections()
     assert "domains" in result[0].text.lower() or "devops" in result[0].text

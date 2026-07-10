@@ -48,6 +48,10 @@ bottom of this file, in the same commit. Docs-only changes are exempt.
   see "Mastering Ubuntu Server Ingest Review" at the bottom — 6th DevOps
   book, a mid-run environment kill recovered via `--start-stage 7`, and
   genuine, investigated R@3 erosion from corpus-composition shift.
+- **Travel domain removed** (feat/remove-travel-domain): see "Travel
+  Domain Removal Review" at the bottom — real code change (settings,
+  MCP tool surface, tests), not just docs; live-verified the domain is
+  actually gone, not just undocumented.
 
 ## Steps (generic + Phase 3 example)
 
@@ -1010,6 +1014,103 @@ erosion), MRR 89.2%, composite 88.2%, with two failures: `devops-020`
     git merge --no-ff feat/ingest-mastering-ubuntu-server
     git push origin main
     ```
+
+---
+
+# Travel Domain Removal Review (feat/remove-travel-domain)
+
+**What this review verifies.** Ed's call: dev-rag never had any travel
+books, and travel research is a web-search task, not a personal-library
+RAG task — so `travel` is removed as a domain entirely, not just left as
+an unused-but-valid option. Unlike every other branch on this checklist,
+**this one is a real code change**, not a docs/data-only ingest: 25
+files touched across `settings.py`, `mcp_server.py`, `eval/loader.py`,
+`eval/run_eval.py`, 6 test files, and docs/specs.
+
+**What changed, by category:**
+- **Code:** `settings.valid_domains` drops `travel` (now `["devops",
+  "python", "ai"]`); `mcp_server.py` loses the `search_travel` tool
+  registration, its dispatch branch, its mention in `search_all`'s
+  description, its entry in the `get_document` domain-hint enum, and its
+  entry in the domain→label dict; `eval/loader.py` stops loading the
+  now-deleted `travel_questions.yaml`; `eval/run_eval.py`'s `--domain`
+  choices drop `travel`.
+- **Data:** `data/evaluation/travel_questions.yaml` deleted — it was a
+  13-line stub with one placeholder question, never populated with real
+  content (travel domain was always empty in the live corpus).
+- **Tests:** one test removed outright (`test_search_travel_success` —
+  no replacement needed, nothing to test); several others repointed from
+  `travel` to `python`/`ai` fixtures where a *second* domain was needed
+  to prove domain-filtering/cross-domain behavior actually works (a
+  single-domain fixture can't test that). Count: 147→146.
+- **Docs/specs:** DEV-RAG-ARCHITECTURE.md's premise statement and
+  ADR-002/007/011 (embedding model choice, multi-domain architecture,
+  Python-domain addition), RUNBOOK.md, README.md's tool table (also
+  brought in sync with `search_python`/`search_ai`, which were missing
+  entirely — found while already editing that table), `pyproject.toml`'s
+  package description, and all 6 `planning/*.md` specs for
+  not-yet-implemented features.
+- **Deliberately NOT touched:** past `docs/BRANCH-REVIEW-CHECKLIST.md`
+  sections (Phase 5/5b), `docs/reviews/OPUS-REVIEW-VERIFICATION.md`,
+  `docs/plans/dev-rag-phase1a-plan.md` — these are accurate records of
+  what was true when written, not living specs; rewriting them would
+  falsify history for no benefit.
+
+**What "pass" looks like.** 146 tests green. Live-verified (not just
+unit-tested): `/health`'s `valid_domains` and `store_parity` no longer
+mention travel; `POST /search` with `domain: "travel"` returns a clean
+422 validation error naming the 3 valid domains; the MCP server's
+`list_tools()` no longer offers `search_travel`.
+
+## Steps
+
+1. `git checkout feat/remove-travel-domain`
+2. `git diff main --stat` — expect **25 files changed**: code
+   (`settings.py`, `mcp_server.py`, `eval/loader.py`, `eval/run_eval.py`),
+   6 test files, 1 deleted data file
+   (`data/evaluation/travel_questions.yaml`), and doc/spec updates. No
+   file should have grown in a way that looks like new functionality —
+   this branch only removes and renames.
+3. `grep -rli travel . | grep -v '/.venv/\|/.git/\|BRANCH-REVIEW-CHECKLIST\|OPUS-REVIEW-VERIFICATION\|phase1a-plan'` —
+   expect only `docs/TODO.md` (the decision note explaining the removal)
+   and nothing else.
+4. `uv run pytest` — expect **146 passed** (was 147 — one test removed,
+   no replacement needed).
+5. Start the server and confirm travel is really gone from the API, not
+   just the docs:
+   ```bash
+   uv run uvicorn dev_rag.api:app --host 127.0.0.1 --port 8000   # terminal 1
+   curl -s http://127.0.0.1:8000/health | python3 -m json.tool
+   ```
+   — expect `valid_domains: ["devops", "python", "ai"]` and
+   `store_parity` with exactly those 3 keys.
+6. Confirm the API rejects the old domain outright:
+   ```bash
+   curl -s -X POST localhost:8000/search -H "Content-Type: application/json" \
+       -d '{"query": "test", "domain": "travel", "n_results": 1}'
+   ```
+   — expect a 422 validation error naming `['devops', 'python', 'ai']`,
+   not a 200 with empty results (that would mean travel is still
+   silently accepted).
+7. Confirm the MCP tool surface actually dropped `search_travel`:
+   ```bash
+   DEV_RAG_BASE_URL=http://localhost:8000 uv run python -c "
+   import asyncio, sys; sys.path.insert(0, 'mcp')
+   import mcp_server
+   tools = asyncio.run(mcp_server.list_tools())
+   print(sorted(t.name for t in tools))
+   "
+   ```
+   — expect `['get_document', 'list_collections', 'rag_health',
+   'search_ai', 'search_all', 'search_devops', 'search_python']` — no
+   `search_travel`.
+8. Ctrl-C the server.
+9. If satisfied:
+   ```bash
+   git checkout main
+   git merge --no-ff feat/remove-travel-domain
+   git push origin main
+   ```
 
 ---
 

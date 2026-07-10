@@ -989,10 +989,10 @@ CREATE TABLE IF NOT EXISTS synthetic_questions (
 ```
 devops_content          # main content embeddings
 devops_questions        # synthetic question embeddings (new)
-travel_content
-travel_questions
 python_content
 python_questions
+ai_content
+ai_questions
 ```
 
 The synthetic question collections enable a two-pass retrieval:
@@ -1193,7 +1193,7 @@ async def run_pipeline(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="dev-rag ingest pipeline")
     parser.add_argument("--source",      required=True)
-    parser.add_argument("--domain",      required=True, choices=["devops", "travel", "python"])
+    parser.add_argument("--domain",      required=True, choices=["devops", "python", "ai"])
     parser.add_argument("--title",       required=True)
     parser.add_argument("--start-stage", type=int, default=1)
     parser.add_argument("--stop-stage",  type=int, default=8)

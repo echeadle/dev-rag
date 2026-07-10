@@ -86,7 +86,7 @@ def test_dense_search_respects_n_results(chroma_path):
 
 
 def test_missing_collection_returns_empty(chroma_path):
-    assert dense_search("q", "travel", chroma_path=chroma_path,
+    assert dense_search("q", "nonexistent", chroma_path=chroma_path,
                         model=OneHotQueryModel()) == []
 
 

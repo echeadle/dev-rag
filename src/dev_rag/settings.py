@@ -66,7 +66,7 @@ class Settings(BaseSettings):
     reranker_min_score: float = 0.5
 
     # Domains
-    valid_domains: list[str] = ["devops", "travel", "python", "ai"]
+    valid_domains: list[str] = ["devops", "python", "ai"]
 
 
 settings = Settings()
