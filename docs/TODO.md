@@ -338,6 +338,19 @@ Books and sources to ingest as the system comes online:
   still holds (0 mentions, grep-verified). Existing 6-question baseline
   reproduces clean, 100% unchanged. New baseline
   `eval/baselines/2026-07-10_python_3books_6q.json`.
+- [x] Writing Great Specifications (Nicieja, Manning) — ✅ 2026-07-10
+  (`feat/ingest-writing-great-specifications`): 539 chunks, 308 pages
+  (299 kept), `python` domain now 1949/1949 in_sync (4th book —
+  specification-by-example, BDD/Gherkin, acceptance testing; general
+  software-craft, same bucket as Five Lines of Code / Practices of the
+  Python Pro / Art of Unit Testing, per Ed's call 2026-07-10). Stage-8
+  verify passed first try (dist=0.376). `python-003`'s GIL negative
+  re-checked, still holds (0 mentions, grep-verified). Existing
+  6-question baseline reproduces clean, 100% unchanged. New baseline
+  `eval/baselines/2026-07-10_python_4books_6q.json`. Ingested as a
+  reference for improving dev-rag itself (alongside the RAG book and Art
+  of Unit Testing), not purely as corpus growth — Ed's next step is a
+  pause on ingesting to discuss RAG-system usage readiness.
 - [ ] Prioritise books that cover: internals, async, production patterns,
   packaging, refactoring, security, testing
 

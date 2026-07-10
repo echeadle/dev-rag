@@ -60,6 +60,11 @@ bottom of this file, in the same commit. Docs-only changes are exempt.
   "Art of Unit Testing Ingest Review" at the bottom — 3rd python-domain
   book, and two stale TODO facts (edition, example language) corrected
   against real grep-verified content instead of being carried forward.
+- **Writing Great Specifications ingest**
+  (feat/ingest-writing-great-specifications): see "Writing Great
+  Specifications Ingest Review" at the bottom — 4th python-domain book,
+  ingested explicitly as a reference for improving dev-rag itself, not
+  just corpus growth.
 
 ## Steps (generic + Phase 3 example)
 
@@ -1292,6 +1297,79 @@ baseline reproduces clean, 100% unchanged; new baseline
     ```bash
     git checkout main
     git merge --no-ff feat/ingest-art-of-unit-testing
+    git push origin main
+    ```
+
+---
+
+# Writing Great Specifications Ingest Review (feat/ingest-writing-great-specifications)
+
+**What this review verifies.** This branch ingests the 4th python-domain
+book (Writing Great Specifications, Nicieja) — no pipeline code change,
+the tracked edits are the new baseline and the usual doc updates.
+
+**Why this book, and why now.** Unlike the prior three python-domain
+ingests, this one wasn't pulled from the standing TODO backlog — Ed
+picked it (along with the already-ingested RAG book and Art of Unit
+Testing) specifically as a reference to consult *while continuing to
+improve dev-rag itself* (specification-by-example, BDD/Gherkin,
+acceptance-test design — directly relevant to writing dev-rag's own eval
+questions and specs), not purely as corpus growth. Same domain
+placement logic as the other three general software-craft books
+(confirmed by Ed 2026-07-10): language-agnostic practice content fits
+`python` alongside Five Lines of Code, Practices of the Python Pro, and
+Art of Unit Testing.
+
+**What "pass" looks like.** 146 tests still green (no code changed).
+`python` domain 1949/1949 in sync (1410 + 539). Stage-8 verify passed
+first try (dist=0.376). `python-003`'s GIL negative re-checked, still
+holds (0 mentions, grep-verified). The existing 6-question python
+baseline reproduces clean, 100% unchanged; new baseline
+`eval/baselines/2026-07-10_python_4books_6q.json`.
+
+## Steps
+
+1. `git checkout feat/ingest-writing-great-specifications`
+2. `git diff main --stat` — expect the new baseline
+   `eval/baselines/2026-07-10_python_4books_6q.json` and doc updates
+   (`docs/TODO.md`, `docs/BRANCH-REVIEW-CHECKLIST.md`). Anything under
+   `src/`, `mcp/`, `tests/`, or `eval/*.py` in the stat is unexpected —
+   stop and ask why.
+3. `uv run pytest tests mcp/tests` — expect **146 passed** (unchanged —
+   confirms no code drifted).
+4. Confirm the corpus loaded at parity:
+   ```bash
+   sqlite3 data/dev_rag.db \
+     "SELECT domain, count(*) FROM chunks WHERE status='active' GROUP BY domain;
+      SELECT 'fts', count(*) FROM chunks_fts;"
+   ```
+   — expect `devops|3797`, `python|1949`, `ai|608`, `fts|6354`.
+5. Confirm the new book is queryable (verify stage against the live
+   stores):
+   ```bash
+   uv run python -m dev_rag.ingest.pipeline \
+       --source data/books/Writing_Great_Specifications.pdf \
+       --domain python --start-stage 8 \
+       --query "What is the Given-When-Then format for writing acceptance test scenarios?"
+   ```
+   — expect `[8 verify] parity OK (1949); top hit
+   writing_great_specifications_...`
+6. Start the server with defaults:
+   ```bash
+   uv run uvicorn dev_rag.api:app --host 127.0.0.1 --port 8000
+   ```
+7. In a second terminal — reproduce the python baseline (deterministic):
+   ```bash
+   uv run python eval/run_eval.py --domain python --no-save \
+       --compare eval/baselines/2026-07-10_python_3books_6q.json
+   ```
+   — expect all metrics flat at 100% (this book doesn't touch the
+   existing 6 questions' expected sources).
+8. Ctrl-C the server.
+9. If satisfied:
+    ```bash
+    git checkout main
+    git merge --no-ff feat/ingest-writing-great-specifications
     git push origin main
     ```
 
