@@ -65,6 +65,10 @@ bottom of this file, in the same commit. Docs-only changes are exempt.
   Specifications Ingest Review" at the bottom — 4th python-domain book,
   ingested explicitly as a reference for improving dev-rag itself, not
   just corpus growth.
+- **Global MCP registration** (feat/global-mcp-registration): see "Global
+  MCP Registration Review" at the bottom — dev-rag's MCP tools now visible
+  in every Claude Code session (not just this repo), a real cwd/relative-path
+  bug fixed in the process, backend persistence explicitly deferred.
 
 ## Steps (generic + Phase 3 example)
 
@@ -1372,6 +1376,88 @@ baseline reproduces clean, 100% unchanged; new baseline
     git merge --no-ff feat/ingest-writing-great-specifications
     git push origin main
     ```
+
+---
+
+# Global MCP Registration Review (feat/global-mcp-registration)
+
+**What this review verifies.** Ed asked for dev-rag to be usable in Claude
+Code the way the `claude.ai Gmail`/`Google Calendar`/`Google Drive`
+connectors already are — from any session, not just when cwd is this repo.
+There's no local equivalent of Gmail's account-level OAuth connector for a
+plain stdio MCP server, so `claude mcp add -s user` (writes to
+`~/.claude.json`'s global `mcpServers` list) is the practical analog —
+confirmed via `claude mcp get dev-rag` before this change ("Scope: Project
+config (shared via .mcp.json)") and `claude mcp add --help` (`-s/--scope
+<local|user|project>`).
+
+**A real bug was found and fixed, not just registration.** `src/dev_rag/
+settings.py`'s DB paths (`chroma_db_path`, `sqlite_db_path`,
+`graph_db_path`) are relative, and the backend has only ever been started
+with cwd = repo root. `uv run --project /abs/path` selects the venv but
+does NOT change cwd — so starting the backend from any other directory
+would have booted cleanly and answered `/health` with `200 ok`, but
+silently pointed at empty/nonexistent stores (empty search results, no
+error). `scripts/serve.sh` fixes this by `cd`-ing into the repo root before
+launching uvicorn. This was live-verified, not assumed: killed the running
+backend, started a fresh one via `serve.sh` from `/tmp`, and confirmed
+`rag_health` returned real per-domain counts (`devops: 3797`, `python:
+1949`, `ai: 608`, all `in_sync: true`) and `search_python` returned real,
+relevant chunks — proving the fix, not just that the server booted.
+
+**Scope-shadowing verified empirically, not guessed.** After registering at
+user scope, `claude mcp get dev-rag` (run with cwd inside the repo) still
+showed "Scope: Project config" and `claude mcp list` showed dev-rag only
+once — confirming local/project scope shadows user scope cleanly, no
+duplicate registration. `.mcp.json` was kept as-is (harmless, doubles as
+in-repo documentation, avoids an unnecessary edit to a git-tracked file).
+
+**No code changes to the actual server.** `mcp/mcp_server.py` was
+confirmed to have zero cwd dependency (pure `httpx` client keyed only on
+`DEV_RAG_BASE_URL`) — only the backend *launch* needed the fix, not the
+proxy itself. 146 tests still green.
+
+**Backend persistence (always-on daemon) explicitly deferred**, matching
+this project's own precedent with GraphRAG/`agent.py` — see the new
+"Backend persistence" entry in `docs/TODO.md`'s Deferred section for the
+full options table (systemd --user is the lead candidate) and re-open
+trigger. The backend still has to be started manually via `scripts/
+serve.sh` before each session that wants to search.
+
+## Steps
+
+1. `git checkout feat/global-mcp-registration`
+2. `git diff main --stat` — expect `docs/TODO.md` (new deferred-persistence
+   entry) and a new `docs/BRANCH-REVIEW-CHECKLIST.md` section, plus the new
+   `scripts/serve.sh` file. Nothing under `src/`, `mcp/`, or `tests/` should
+   differ — no server code changed.
+3. `uv run pytest tests mcp/tests` — expect **146 passed** (unchanged).
+4. Confirm the global registration is in place:
+   ```bash
+   claude mcp list
+   claude mcp get dev-rag
+   ```
+   — expect `dev-rag` listed and connected; `claude mcp get` run from
+   inside this repo should show `Scope: Project config` (shadowing, not
+   duplication — this is expected and correct, see above).
+5. Kill any running backend, then start one via the new script from
+   **outside the repo** (the actual capability being tested):
+   ```bash
+   pkill -f "uvicorn dev_rag.api:app"
+   cd /tmp && /home/echeadle/Projects/coding_projects/learning/dev-rag/scripts/serve.sh &
+   ```
+6. Call `rag_health` (via the MCP tool, or `curl -s localhost:8000/health`)
+   — expect real counts (`devops: 3797`, `python: 1949`, `ai: 608`, all
+   `in_sync: true`), NOT zeros. Zeros would mean the cwd fix regressed.
+7. Call `search_python` (or any domain) with a real query — expect
+   non-empty, relevant results, not an empty list.
+8. Ctrl-C the server (or `pkill -f "uvicorn dev_rag.api:app"`).
+9. If satisfied:
+   ```bash
+   git checkout main
+   git merge --no-ff feat/global-mcp-registration
+   git push origin main
+   ```
 
 ---
 

@@ -447,6 +447,42 @@ is working and evaluated.
   `planning/headroom-integration-spec.md`, and add an un-mocked smoke test (OBS-008)
   before relying on it.
 
+### Backend persistence (always-on API server) — DEFERRED 2026-07-10
+dev-rag's MCP server was registered at **user scope** 2026-07-10
+(`claude mcp add dev-rag -s user ...`), so the `search_*`/`get_document`/
+`list_collections`/`rag_health` tools are now visible in every Claude Code
+session, not just when cwd is this repo (verified: `.mcp.json`'s
+project-scope entry shadows cleanly when cwd is inside the repo — no
+duplicate listing, kept as-is). `scripts/serve.sh` was added so the FastAPI
+backend can actually be started from any directory (fixes a real bug:
+`settings.py`'s DB paths — `chroma_db_path`, `sqlite_db_path`,
+`graph_db_path` — are relative, so starting uvicorn from outside the repo
+root would boot cleanly but silently point at empty stores; the script
+`cd`s into the repo root first).
+
+**What's still manual, on purpose:** the backend is not an always-on daemon.
+Ed has to run `scripts/serve.sh` (optionally symlinked onto `PATH`) before
+each session where he wants to search — unlike Gmail/Calendar/Drive, which
+are always-on remote connectors. This was a deliberate phase-1-only scope
+call (see the plan `giggly-stargazing-kernighan`), matching this project's
+own precedent of parking GraphRAG/`agent.py` rather than building
+speculatively, and Ed's "no automation until manual is proven" rule —
+global registration was itself the untested variable, so it wasn't bundled
+with a second one (a daemon).
+
+**Persistence options for whenever this is revisited** (none built yet):
+
+| Option | New deps/code | Idle RAM cost | Notes |
+|---|---|---|---|
+| systemd --user unit | None — just a `.service` file | ~4.5GB resident while logged in (reranker + BGE-M3 both eager-load per Phase 5b, regardless of `RERANKER_ENABLED`) | **Lead candidate**: same `uv run uvicorn` invocation as today, just supervised; `systemd --user` confirmed present and working on this machine |
+| Resurrect `docker-compose.yml` | Docker daemon as new dependency; contradicts `docs/RUNBOOK.md`'s current "no containers needed" stance | Same ~4.5GB + container overhead | Two real defects found on inspection, not just "unverified": no volume mount for `~/.cache/huggingface` (forces re-downloading both models on first container start), and it hardcodes `RERANKER_ENABLED: "true"` — contradicts ADR-012's decision that the reranker stays off by default |
+| `mcp_server.py` lazily spawns/supervises the backend | New subprocess-management code (Popen, health-check-retry, shutdown semantics) in a file that's currently a pure thin proxy | Zero when idle | Only option with no idle RAM cost, but turns a clean proxy into a supervisor — real added complexity this personal single-user project's conventions caution against |
+
+**Re-open trigger:** revisit once Ed has used the manual-start-from-anywhere
+workflow for a while and knows whether the remaining friction (or the
+~4.5GB idle-RAM question for the systemd option) actually matters in
+practice — not before.
+
 ---
 
 ## Backlog — dev-rag Future Phases
