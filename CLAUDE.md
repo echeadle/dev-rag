@@ -270,6 +270,29 @@ Ingest tests never load real BGE-M3 — the model is always mocked.
   OPUS-REVIEW-VERIFICATION.md`, `docs/plans/dev-rag-phase1a-plan.md` —
   were deliberately left untouched; they're accurate records of what was
   true when written, not living specs.
+- **Securing DevOps ingest (2026-07-09, `feat/ingest-securing-devops`):**
+  7th DevOps book, no pipeline code changes. 708 chunks (401 pages, 390
+  kept post-clean); `devops` domain now 3797/3797 in_sync. Ran to
+  completion cleanly this time (no environment kill, unlike Mastering
+  Ubuntu Server). Stage-8 verify passed first try (dist=0.375). Existing
+  negatives re-checked: Podman/Istio/Pulumi still 0 mentions; GitLab (4
+  mentions) inspected directly — all incidental (source-hosting option
+  lists, a one-line "substitute GitLab for GitHub" aside), no actual
+  GitLab CI content, `devops-027` still holds. **A new, different kind
+  of erosion — genuine topical competition, not corpus-shift noise:**
+  this book is specifically about DevOps security, so for the first time
+  a competitor to Docker Deep Dive's security chapter exists on actual
+  merit. `devops-006` (source-specific, expected Docker Deep Dive) now
+  loses by a hair (0.031 vs 0.0303 — checked live) to Securing DevOps on
+  a "container security recommendations" query; `devops-para-001b`'s
+  secrets-paraphrase question also now tops with Securing DevOps instead
+  of the Ansible books. New baseline
+  `eval/baselines/2026-07-09_hybrid_rrf_7books_39q.json`: R@1 84.6→80.8%
+  (-3.8), R@3 92.3% (flat), MRR 89.2→86.5 (-2.7), source_precision
+  100→83.3% (-16.7, new — the `source_specific` category questions had
+  never been contested before), composite 88.2→87.4 (-0.8). Two
+  failures: `devops-020` (pre-existing) and `devops-para-001b` (this
+  erosion, new top-1 source).
 
 These are still stubs, not working code:
 - `graph.py`, `agent.py` (unwired — nothing imports it), `mcp/compress.py`

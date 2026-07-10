@@ -52,6 +52,10 @@ bottom of this file, in the same commit. Docs-only changes are exempt.
   Domain Removal Review" at the bottom — real code change (settings,
   MCP tool surface, tests), not just docs; live-verified the domain is
   actually gone, not just undocumented.
+- **Securing DevOps ingest** (feat/ingest-securing-devops): see
+  "Securing DevOps Ingest Review" at the bottom — 7th DevOps book, ran
+  cleanly, and a new erosion pattern (genuine topical competition from
+  the first security-specific book) verified live, not assumed.
 
 ## Steps (generic + Phase 3 example)
 
@@ -1111,6 +1115,100 @@ mention travel; `POST /search` with `domain: "travel"` returns a clean
    git merge --no-ff feat/remove-travel-domain
    git push origin main
    ```
+
+---
+
+# Securing DevOps Ingest Review (feat/ingest-securing-devops)
+
+**What this review verifies.** This branch ingests the 7th DevOps book
+(Securing DevOps, Vehent) — the first book in the corpus specifically
+about DevOps *security* rather than a specific tool (Docker/Ansible/
+Ubuntu). **No code change** — the tracked edits are a new eval baseline
+and the usual doc updates. Ran to completion cleanly this time, unlike
+the Mastering Ubuntu Server ingest (no environment kill).
+
+**The interesting finding is a new kind of erosion.** Every prior
+multi-book erosion in this corpus (RLA vs. Docker, Mastering Ansible vs.
+Docker) was *topic-adjacent* competition — Ansible content drifting into
+Docker-secrets territory via shared vocabulary. This one is different:
+Securing DevOps is a book *specifically about* container/DevOps
+security, so for the first time a genuine, on-merit competitor to Docker
+Deep Dive's security chapter exists. Checked live, not assumed:
+`devops-006` ("container security recommendations", expected Docker
+Deep Dive) now loses by a hair — 0.031 vs 0.0303 — to a Securing DevOps
+chunk that is directly on-topic, not a tangential mention. This is the
+corpus doing exactly what it should when a more specific source arrives;
+`devops-006`'s `expected_source: "dockerdeepdive.pdf"` was set when
+Docker Deep Dive was the only security-focused book around, and that
+assumption no longer holds.
+
+**Existing negatives re-checked, not assumed.** Podman/Istio/Pulumi:
+still 0 mentions. GitLab: 4 mentions, all incidental (a source-hosting
+options list, a one-line "you could substitute GitLab for GitHub"
+aside) — no actual GitLab CI content, `devops-027` still holds.
+
+**What "pass" looks like.** 146 tests still green (no code changed).
+Health shows devops 3797/3797 in sync, other domains unaffected. The RRF
+eval reproduces R@1 80.8% (down from 84.6%, the erosion above), R@3
+92.3% (flat), MRR 86.5%, source_precision 83.3% (down from 100% — the
+first time this category has ever been contested), composite 87.4%,
+with two failures: `devops-020` (pre-existing, unrelated) and
+`devops-para-001b` (now topped by Securing DevOps instead of the
+Ansible books — same paraphrase question, new competitor).
+
+## Steps
+
+1. `git checkout feat/ingest-securing-devops`
+2. `git diff main --stat` — expect **4 files changed, no code**: the new
+   baseline `eval/baselines/2026-07-09_hybrid_rrf_7books_39q.json` and
+   three doc updates (`CLAUDE.md`, `current_context.md`, `docs/TODO.md`).
+   Anything under `src/`, `mcp/`, `tests/`, or `eval/*.py` in the stat is
+   unexpected — stop and ask why.
+3. `uv run pytest` — expect **146 passed** (unchanged — confirms no code
+   drifted).
+4. Confirm the corpus loaded at parity (no re-ingest needed):
+   ```bash
+   sqlite3 data/dev_rag.db \
+     "SELECT domain, count(*) FROM chunks WHERE status='active' GROUP BY domain;
+      SELECT 'fts', count(*) FROM chunks_fts;"
+   ```
+   — expect `devops|3797`, `python|929`, `ai|608`, `fts|5334`.
+5. Confirm the new book is queryable (verify stage against the live stores):
+   ```bash
+   uv run python -m dev_rag.ingest.pipeline \
+       --source data/books/Securing_DevOps.pdf \
+       --domain devops --start-stage 8 \
+       --query "What is test-driven security and how does it differ from traditional security testing?"
+   ```
+   — expect `[8 verify] parity OK (3797); top hit securing_devops_...`
+6. Start the server with defaults:
+   ```bash
+   uv run uvicorn dev_rag.api:app --host 127.0.0.1 --port 8000
+   ```
+7. In a second terminal — reproduce the RRF baseline (deterministic):
+   ```bash
+   uv run python eval/run_eval.py --domain devops --no-save \
+       --compare eval/baselines/2026-07-09_hybrid_rrf_6books_39q.json
+   ```
+   — expect R@1 80.8% (-3.8), R@3 92.3% (+0.0), MRR 86.5% (-2.7),
+   composite 87.4% (-0.8), two failures: `devops-020` and
+   `devops-para-001b`.
+8. OPTIONAL — spot-check the genuine-competition finding directly:
+   ```bash
+   curl -s -X POST localhost:8000/search -H "Content-Type: application/json" \
+       -d '{"query": "According to your sources, what are the most important container security recommendations?", "domain": "devops", "n_results": 5}' \
+       | python3 -c "import json,sys; [print(r['source'], r['relevance_score']) for r in json.load(sys.stdin)['results']]"
+   ```
+   — expect `Securing_DevOps.pdf` at rank 1 with a score only marginally
+   ahead of `dockerdeepdive.pdf` at rank 2 (close margin, not a blowout —
+   this is real competition, not noise).
+9. Ctrl-C the server.
+10. If satisfied:
+    ```bash
+    git checkout main
+    git merge --no-ff feat/ingest-securing-devops
+    git push origin main
+    ```
 
 ---
 
