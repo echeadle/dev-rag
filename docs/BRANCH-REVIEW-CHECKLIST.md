@@ -44,6 +44,10 @@ bottom of this file, in the same commit. Docs-only changes are exempt.
   (feat/ingest-bourne-rag-ai-domain): see "Bourne RAG Ingest Review" at
   the bottom — first book in the `ai` domain, first real run of the
   pre-written `ai_questions.yaml` eval set.
+- **Mastering Ubuntu Server ingest** (feat/ingest-mastering-ubuntu-server):
+  see "Mastering Ubuntu Server Ingest Review" at the bottom — 6th DevOps
+  book, a mid-run environment kill recovered via `--start-stage 7`, and
+  genuine, investigated R@3 erosion from corpus-composition shift.
 
 ## Steps (generic + Phase 3 example)
 
@@ -916,6 +920,96 @@ UNLOCKING_DATA_WITH_GENERATIVE_AI_AND_RAG.pdf`, chunk_match 80%.
     ```
     After merging, `dev-rag` has 3 populated domains (devops, python,
     ai) — `travel` is the only domain left empty.
+
+---
+
+# Mastering Ubuntu Server Ingest Review (feat/ingest-mastering-ubuntu-server)
+
+**What this review verifies.** This branch ingests the 6th DevOps book
+(Mastering Ubuntu Server, LaCroix) — OS-level server administration and
+security, a distinct topic area from the Docker/Ansible books already in
+the corpus. **No code change** — the tracked edits are a new eval
+baseline and the usual doc updates, plus a new Lessons entry and backlog
+item in CLAUDE.md/docs/TODO.md about an operational finding from this
+run.
+
+Two things worth understanding before merging. First, **the background
+ingest was killed by the environment partway through**, right at the
+stage 6 (embed) → stage 7 (load) boundary, ~33 minutes into embedding —
+no crash, no traceback, no OOM entry in `journalctl`. This was
+recoverable without data loss or re-embedding: the embed stage writes
+`data/embeddings/{slug}_embeddings.json` once, after all batches finish,
+and that file had already been written when the kill landed. Resumed
+cleanly with `--start-stage 7`. **This was lucky, not guaranteed** — the
+embed stage has no per-batch checkpoint, so a kill mid-batch on a future,
+larger book would lose the whole run; tracked as a backlog item. Second,
+**a previously-passing eval question flipped to failing**
+(`devops-para-001b`) — checked live, not assumed: the correct Docker
+Deep Dive chunk is now ranked #5 (was top-3), crowded out by Ansible
+content as the larger corpus shifts RRF/BM25 statistics corpus-wide.
+This is a *recurrence* of the exact erosion pattern already documented
+when Ansible for Real-Life Automation was first ingested — not a new
+failure mode, not caused directly by Ubuntu Server content competing
+(Ubuntu Server isn't even in the top 5 for that query).
+
+**What "pass" looks like.** 147 tests still green (no code changed).
+Health shows devops 3089/3089 in sync, other domains unaffected. The RRF
+eval reproduces R@1 84.6%, R@3 92.3% (down from 96.2%, the recorded
+erosion), MRR 89.2%, composite 88.2%, with two failures: `devops-020`
+(pre-existing, unrelated) and `devops-para-001b` (this erosion).
+
+## Steps
+
+1. `git checkout feat/ingest-mastering-ubuntu-server`
+2. `git diff main --stat` — expect **4 files changed, no code**: the new
+   baseline `eval/baselines/2026-07-09_hybrid_rrf_6books_39q.json` and
+   three doc updates (`CLAUDE.md`, `current_context.md`, `docs/TODO.md`).
+   Anything under `src/`, `mcp/`, `tests/`, or `eval/*.py` in the stat is
+   unexpected — stop and ask why.
+3. `uv run pytest` — expect **147 passed** (unchanged — confirms no code
+   drifted, including during the mid-run recovery).
+4. Confirm the corpus loaded at parity (no re-ingest needed):
+   ```bash
+   sqlite3 data/dev_rag.db \
+     "SELECT domain, count(*) FROM chunks WHERE status='active' GROUP BY domain;
+      SELECT 'fts', count(*) FROM chunks_fts;"
+   ```
+   — expect `devops|3089`, `python|929`, `ai|608`, `fts|4626`.
+5. Confirm the new book is queryable (verify stage against the live stores):
+   ```bash
+   uv run python -m dev_rag.ingest.pipeline \
+       --source data/books/MasteringUbuntuServer.pdf \
+       --domain devops --start-stage 8 \
+       --query "How do you configure Netplan to set up static network interfaces on Ubuntu Server?"
+   ```
+   — expect `[8 verify] parity OK (3089); top hit masteringubuntuserver_...`
+6. Start the server with defaults:
+   ```bash
+   uv run uvicorn dev_rag.api:app --host 127.0.0.1 --port 8000
+   ```
+7. In a second terminal — reproduce the RRF baseline (deterministic):
+   ```bash
+   uv run python eval/run_eval.py --domain devops --no-save \
+       --compare eval/baselines/2026-07-09_hybrid_rrf_5books_39q.json
+   ```
+   — expect R@1 84.6% (+0.0), **R@3 92.3% (-3.8)**, MRR 89.2% (-0.5),
+   composite 88.2% (-1.7), two failures: `devops-020` and
+   `devops-para-001b`.
+8. OPTIONAL — spot-check the erosion directly:
+   ```bash
+   curl -s -X POST localhost:8000/search -H "Content-Type: application/json" \
+       -d '{"query": "What is the mechanism for passing sensitive data to containers securely?", "domain": "devops", "n_results": 5}' \
+       | python3 -c "import json,sys; [print(r['source']) for r in json.load(sys.stdin)['results']]"
+   ```
+   — expect `dockerdeepdive.pdf` (the correct answer) at position 5, with
+   RLA and Mastering Ansible ahead of it at 1-2.
+9. Ctrl-C the server.
+10. If satisfied:
+    ```bash
+    git checkout main
+    git merge --no-ff feat/ingest-mastering-ubuntu-server
+    git push origin main
+    ```
 
 ---
 
