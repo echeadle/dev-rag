@@ -52,6 +52,20 @@ one-line rule under ## Lessons, so it never happens again.
   this specific kill was recoverable, but a kill mid-batch would not have
   been. Worth a pipeline checkpoint improvement if books keep growing
   (tracked in docs/TODO.md backlog).
+- `RERANKER_ENABLED=true` on its own applies `settings.reranker_candidates`
+  (default 50, ~112s/query on CPU) to EVERY single-domain search — not the
+  fast `force_rerank_candidates=10` (~15-20s) path that `search_all` uses.
+  Don't tell Ed "single-domain searches will take ~15s" when he turns the
+  global flag on — that number is `search_all`'s scoped pool size, not the
+  default one. Also: uvicorn runs single-process/single-threaded for this
+  CPU-bound work, so firing several searches close together queues them
+  serially — a client can hit its own timeout and report an error while
+  the request is still running server-side (it'll show up as a delayed
+  200 OK in the server log). Reason: 2026-07-10, gave Ed the wrong latency
+  estimate when walking him through `RERANKER_ENABLED=true`, then watched
+  a `search_ai` call queue behind an earlier `search_all` call and a curl
+  test needed a 90s+ timeout before I traced it to `reranker_candidates`
+  vs `force_rerank_candidates`.
 
 ## Toolchain — uv only
 - **Use `uv` exclusively. Never call `pip` directly.** Use `uv run …`, `uv add …`,

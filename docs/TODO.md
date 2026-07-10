@@ -197,6 +197,19 @@ reranker already handles.
   ~100× latency outweighs the quality gain as a default. `RERANKER_ENABLED=true`
   stays available per-run. Not a standing open item anymore — reopen only on a
   material change (GPU inference, caching, further corpus growth).
+- **TODO (nice-to-have, not urgent):** log the active reranker candidate
+  count and its rough per-query latency at server startup (e.g. "reranker
+  enabled: candidates=50 (~112s/query) — set RERANKER_CANDIDATES=10 for
+  ~15s/query interactive use") whenever `RERANKER_ENABLED=true`. Right now
+  the split between `reranker_candidates` (default 50, meant for deliberate
+  quality A/B work) and `force_rerank_candidates` (10, `search_all`'s fixed
+  fast path) is documented only in code comments — someone bare-enabling
+  the flag has no visible warning before hitting the slow path. Reason:
+  2026-07-10, Ed turned the reranker on for interactive use and got the
+  ~112s/query default silently, which queued several searches serially and
+  took minutes to trace back to `reranker_candidates` vs
+  `force_rerank_candidates`. Not a design bug (the two-tier split is
+  deliberate — see above) — just missing at-runtime visibility.
 
 ---
 
