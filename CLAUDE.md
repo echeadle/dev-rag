@@ -93,9 +93,9 @@ one-line rule under ## Lessons, so it never happens again.
   uv sync                  # resolves cleanly
   ```
 
-## Tests — the full suite is 146 (as of the travel-domain removal, 2026-07-09)
+## Tests — the full suite is 153 (as of the /ask route, 2026-07-15)
 ```
-uv run pytest              # expect 146 passed (118 in tests/ + 28 in mcp/tests/)
+uv run pytest              # expect 153 passed (125 in tests/ + 28 in mcp/tests/)
 ```
 The `mcp/tests/` include the fixtures/consumer-alignment tests guarding the two
 High review findings (OBS-001/002). **If a bare run reports only the `tests/`
@@ -388,6 +388,37 @@ Ingest tests never load real BGE-M3 — the model is always mocked.
   `search_graph`/`graph.py`/GraphRAG remain deferred and untouched — see
   the dated update on the GraphRAG scope decision in
   DEV-RAG-ARCHITECTURE.md.
+- **agent.py wired into HTTP — POST /ask (2026-07-15,
+  `feat/agent-ask-route`):** the `search_corpus` agent is no longer
+  standalone-CLI-only. New `POST /ask` in `api.py` (`AskRequest` →
+  `await agent.run(query)` → `{"answer": ..., "query": ...}`), built lazily
+  per-request via a function-local `from .agent import build_agent` (breaks
+  the circular import — `agent.py` imports from `api.py` at module level —
+  and keeps the server usable for `/search` with no key configured, since
+  `build_agent()` raises immediately on an empty key). `async`, not
+  streaming: confirmed empirically that `agent.run_sync()` raises inside
+  FastAPI's already-running event loop, so the route uses `await
+  agent.run(...)`. **A real design choice made explicitly, not picked
+  silently:** an MCP `ask_dev_rag` tool (thin proxy to `/ask`, matching
+  every existing MCP tool's pattern) was considered and **deliberately not
+  built**, per Ed's call via AskUserQuestion — the MCP consumer (Claude
+  Code) is already an agent that can call `search_devops`/`search_python`/
+  `search_ai`/`search_all` directly and synthesize with its own reasoning,
+  so a tool that delegates synthesis to a Haiku sub-agent would be
+  redundant for that consumer and cost an extra funded API call for little
+  benefit; `/ask` still serves other real consumers (curl, scripts, a
+  future UI) without their own LLM. No `mcp/` changes at all this branch.
+  150→153 tests (`tests/test_ask_route.py`, 3 new — 503 without a key, a
+  `FunctionModel`-driven 200 with the expected synthesized answer, a clean
+  502 on agent failure with no exception text leaked to the caller — same
+  injection seam as `tests/test_agent.py`, monkeypatching `build_agent`/
+  `perform_search` on the `dev_rag.agent` module). **Live-verified
+  (2026-07-15):** a real Docker bind-mounts question returned a cited,
+  multi-paragraph answer sourced correctly from *A Developer's Essential
+  Guide to Docker Compose*; the known BGE-M3 corpus-gap question produced
+  the same honest decline as the CLI; restarting the server with
+  `ANTHROPIC_API_KEY=""` kept `/health`/`/search` at `"status": "ok"` while
+  `/ask` returned a clean `503`, not a crash.
 
 These are still stubs, not working code:
 - `graph.py` (unwired — nothing imports it), `mcp/compress.py` (no-op).
