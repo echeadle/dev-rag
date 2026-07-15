@@ -231,12 +231,32 @@ uv run python eval/run_eval.py --category negative --no-save
   or in dense mode (cosine < 0.5).
 - `--graph` stays gated off until `/search/graph` exists (Phase 8).
 
+## 5d. Ask the agent a question
+
+No server needs to be running — `agent.py` calls the hybrid search pipeline
+in-process via `perform_search` (the same function `/search` uses), not over
+HTTP. Requires a real Anthropic API key: add `ANTHROPIC_API_KEY=sk-ant-...`
+to `.env` (there is no `.env` in this repo by default — create one). Nothing
+loads or reads this key except `settings.anthropic_api_key`.
+
+```bash
+uv run python -m dev_rag.agent "What is BGE-M3?"
+```
+
+The agent has one tool, `search_corpus(query, domain)`, scoped to
+`devops`/`python`/`ai` — it decides which domain(s) to search and can call
+the tool more than once per question. Default model is Haiku 4.5
+(`settings.agent_model`, cost-optimized for tool-calling + short synthesis);
+`search_corpus` is RRF-only by default (`force_rerank=False`, matches
+ADR-012 and the single-domain MCP tools) so repeated calls in one turn stay
+fast. `search_graph` (GraphRAG) is not implemented — see §6.
+
 ## 6. What does NOT run yet (do not trust these surfaces)
 
 | Surface | State |
 |---|---|
 | `docker compose up` | Compose files predate Phase 1a and are **unverified**; everything runs directly via `uv run`, no containers needed. |
-| GraphRAG / agent.py / compression | Stubs, deferred (see docs/TODO.md). |
+| GraphRAG / `graph.py` / `search_graph` / compression | Stubs, deferred (see docs/TODO.md). `agent.py`'s `search_corpus` capability is implemented — see §5d. |
 
 Architecture doc §8 ("Running the System") still shows the aspirational
 Docker-based commands — **this runbook supersedes it** until §8 is

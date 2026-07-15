@@ -189,17 +189,29 @@ async def health():
     }
 
 
-@app.post("/search")
-async def search(request: SearchRequest) -> dict:
+def perform_search(
+    query: str,
+    domain: str,
+    n_results: int = 5,
+    search_mode: SearchMode = SearchMode.hybrid,
+    force_rerank: bool = False,
+) -> tuple[list[SearchResult], bool]:
     """
     Retrieval in the requested mode. Always returns canonical
     `relevance_score` (OBS-001); value semantics are per-mode — see the
     module docstring. Hybrid mode is two-stage: RRF candidates, then the
     cross-encoder (with OBS-002 RankedResult fallback to RRF order).
     Dense/sparse are single-stage diagnostic modes and never rerank.
+
+    Extracted from the `/search` route so non-HTTP callers (agent.py's
+    search_corpus tool) share the exact same canonicalization logic rather
+    than risking a divergent reimplementation of OBS-001/OBS-002.
+
+    Returns (results, used_reranker) — used_reranker reflects whether THIS
+    call actually reranked, not just the server-wide default.
     """
-    use_reranker = settings.reranker_enabled or request.force_rerank
-    if request.search_mode == SearchMode.hybrid:
+    use_reranker = settings.reranker_enabled or force_rerank
+    if search_mode == SearchMode.hybrid:
         # Stage 1: with the reranker on, fetch a wide pool (ADR-012's 50→N);
         # the backends must also widen or fusion can never fill the pool.
         # Phase 5b: force_rerank uses the SMALLER force_rerank_candidates
@@ -214,12 +226,12 @@ async def search(request: SearchRequest) -> dict:
                 else settings.force_rerank_candidates
             )
             candidates = hybrid_search(
-                request.query, request.domain, n_results=pool,
+                query, domain, n_results=pool,
                 dense_candidates=pool, sparse_candidates=pool,
             )
         else:
             candidates = hybrid_search(
-                request.query, request.domain, n_results=request.n_results,
+                query, domain, n_results=n_results,
             )
         # Stage 2: cross-encoder re-score. Falls back to RRF order (OBS-002)
         # when the reranker is disabled (and not force_rerank), not loaded,
@@ -235,10 +247,10 @@ async def search(request: SearchRequest) -> dict:
         # Reverted — search_all's real cost is ~20s × populated-domain-count,
         # not a fixed ~20s; SEARCH_ALL_TIMEOUT in mcp_server.py is sized for it.
         ranked = rerank_with_fallback(
-            request.query,
+            query,
             candidates,
             reranker._reranker if use_reranker else None,
-            top_n=request.n_results,
+            top_n=n_results,
         )
         results = [
             SearchResult(
@@ -261,7 +273,7 @@ async def search(request: SearchRequest) -> dict:
             )
             for r in ranked
         ]
-    elif request.search_mode == SearchMode.dense:
+    elif search_mode == SearchMode.dense:
         results = [
             SearchResult(
                 chunk_id=r.chunk_id,
@@ -271,7 +283,7 @@ async def search(request: SearchRequest) -> dict:
                 relevance_score=r.dense_score,
             )
             for r in dense_search(
-                request.query, request.domain, n_results=request.n_results,
+                query, domain, n_results=n_results,
             )
         ]
     else:  # SearchMode.sparse
@@ -284,10 +296,24 @@ async def search(request: SearchRequest) -> dict:
                 relevance_score=r.bm25_score,
             )
             for r in bm25_search(
-                request.query, request.domain, n_results=request.n_results,
+                query, domain, n_results=n_results,
             )
         ]
 
+    return results, use_reranker
+
+
+@app.post("/search")
+async def search(request: SearchRequest) -> dict:
+    """Thin HTTP wrapper around perform_search — see that function's docstring
+    for retrieval-mode semantics."""
+    results, use_reranker = perform_search(
+        request.query,
+        request.domain,
+        request.n_results,
+        request.search_mode,
+        request.force_rerank,
+    )
     return {
         "results": [r.model_dump() for r in results],
         "query": request.query,
