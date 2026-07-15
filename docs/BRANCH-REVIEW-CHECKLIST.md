@@ -75,6 +75,11 @@ bottom of this file, in the same commit. Docs-only changes are exempt.
   refactor of `/search` to share canonicalization logic, and a live-API
   smoke test that's explicitly unverified (no `ANTHROPIC_API_KEY`
   configured on this machine yet).
+- **agent.py wired into HTTP via POST /ask** (feat/agent-ask-route): see
+  "Agent /ask Route Review" at the bottom — new HTTP route over the
+  existing `search_corpus` agent, an MCP tool considered and explicitly
+  deferred (redundant for the Claude Code consumer), live-verified with a
+  real answer, a real corpus-gap decline, and a clean 503 on a keyless server.
 
 ## Steps (generic + Phase 3 example)
 
@@ -1595,6 +1600,113 @@ deferred and untouched.
    ```bash
    git checkout main
    git merge --no-ff feat/agent-search-corpus
+   git push origin main
+   ```
+
+---
+
+# Agent /ask Route Review (feat/agent-ask-route)
+
+**What this review verifies.** `src/dev_rag/agent.py`'s `search_corpus` agent
+(shipped standalone-CLI-only on `feat/agent-search-corpus`) is now reachable
+over HTTP via `POST /ask`, so it's usable like every other capability in this
+system (`/search`, `/health`, `/collections`) instead of requiring a separate
+terminal running the CLI.
+
+**Architectural decision, made explicitly rather than picked silently:**
+`/ask` lives in `api.py`, in-process with the already-warm BGE-M3 embedder
+and reranker (lazy singleton + lifespan eager-load) — `search_corpus` →
+`perform_search` hits loaded models with zero HTTP hop. An MCP tool was
+considered and **deliberately NOT built**: Ed's call, confirmed via
+AskUserQuestion — the MCP consumer (Claude Code) is already an agent that can
+call `search_devops`/`search_python`/`search_ai`/`search_all` directly and
+synthesize with its own reasoning, so an `ask_dev_rag` MCP tool delegating
+synthesis to a Haiku sub-agent would be redundant for that consumer and cost
+an extra funded API call for little benefit. `/ask` still serves other real
+consumers (curl, scripts, a future UI) that don't have their own LLM. This is
+a deferred, deliberately-skipped option — not an oversight, and not a TODO bug.
+
+**What changed:**
+- **New:** `AskRequest` (Pydantic model, same `min_length=1, max_length=1000`
+  bound as `SearchRequest.query`) and `POST /ask` in `src/dev_rag/api.py`,
+  placed after `perform_search`/`/search`.
+- **Async, not sync:** the route does `await agent.run(request.query)`, not
+  `run_sync()` — confirmed empirically that `run_sync()` drives its own event
+  loop and raises when called from inside FastAPI's already-running loop.
+- **Lazy per-request agent construction:** `build_agent()` is called inside
+  the handler via a local import (`from .agent import build_agent`), not at
+  module level or lifespan startup. Two reasons: (1) `agent.py` imports
+  `perform_search`/`SearchResult` from `api.py` at module level, so a
+  top-level `api.py → agent.py` import would be circular; (2) `build_agent()`
+  raises `UserError` immediately if `settings.anthropic_api_key` is empty,
+  and the server must stay usable for `/search` on a keyless machine — so
+  the agent is never built at startup.
+- **Clean error handling (security.md — no stack traces to callers):** no key
+  configured → `503` with a plain detail message; any other agent failure
+  (network/model error) → `502` with a generic detail, real exception logged
+  server-side only via `log.exception`.
+- **Tests:** new `tests/test_ask_route.py` (3 tests) — 503 without a key,
+  a full `FunctionModel`-driven tool-call → synthesis loop returning 200 with
+  the expected answer text, and a `FunctionModel` that raises returning a
+  clean 502 with the real exception text absent from the response body.
+  Same injection pattern as `tests/test_agent.py`: `build_agent` and
+  `perform_search` monkeypatched on the `dev_rag.agent` module, never
+  touching the real Anthropic API. 150→153.
+
+**Live-verified (2026-07-15):**
+- `curl -X POST /ask -d '{"query": "What is BGE-M3?"}'` — agent correctly
+  declined to answer (same known corpus-coverage gap as the CLI's earlier
+  verification: the `ai` domain discusses embeddings/RAG generally but never
+  names BGE-M3), matching the standalone-CLI behavior exactly.
+- `curl -X POST /ask -d '{"query": "How do bind mounts work in Docker?"}'` —
+  a real, well-cited, multi-paragraph answer sourced from *A Developer's
+  Essential Guide to Docker Compose*, including a YAML example and an
+  `docker inspect` bind-mount snippet pulled from retrieved passages.
+- Restarted the server with `ANTHROPIC_API_KEY=""` — `/health` and (by
+  extension) `/search` still returned `"status": "ok"` normally; `/ask`
+  returned a clean `503 {"detail": "ANTHROPIC_API_KEY not configured"}`, not
+  a crash or leaked stack trace.
+
+## Steps
+
+1. `git checkout feat/agent-ask-route`
+2. `git diff main --stat` — expect `src/dev_rag/api.py` (new `AskRequest` +
+   `/ask` route, additive only — `/search`/`/health`/`/collections`
+   untouched), new `tests/test_ask_route.py`, and the doc files listed above.
+   No change to `mcp/mcp_server.py` — the MCP tool was deliberately not built
+   (see the decision above).
+3. `uv run pytest tests mcp/tests` — expect **153 passed** (was 150).
+4. Confirm the keyless guarantee still holds:
+   ```bash
+   uv run python -c "import dev_rag.api; print('import ok, no key needed')"
+   ```
+5. Start the server with a configured `ANTHROPIC_API_KEY` (in `.env`):
+   ```bash
+   uv run uvicorn dev_rag.api:app --host 127.0.0.1 --port 8000
+   ```
+6. Ask a real question the corpus covers:
+   ```bash
+   curl -s -X POST http://127.0.0.1:8000/ask \
+     -H 'Content-Type: application/json' \
+     -d '{"query": "How do bind mounts work in Docker?"}' | python3 -m json.tool
+   ```
+   Expect a cited, sourced answer (10-20s typical — Haiku synthesis + one or
+   more `search_corpus` calls, no reranking by default).
+7. Ask the known corpus-gap question:
+   ```bash
+   curl -s -X POST http://127.0.0.1:8000/ask \
+     -H 'Content-Type: application/json' \
+     -d '{"query": "What is BGE-M3?"}' | python3 -m json.tool
+   ```
+   Expect an honest decline, not a hallucinated answer.
+8. Stop the server (Ctrl-C). Restart it with the key cleared
+   (`ANTHROPIC_API_KEY="" uv run uvicorn dev_rag.api:app --host 127.0.0.1 --port 8000`)
+   and repeat step 6's curl — expect a clean `503`, and confirm
+   `curl -s http://127.0.0.1:8000/health` still reports `"status": "ok"`.
+9. If satisfied:
+   ```bash
+   git checkout main
+   git merge --no-ff feat/agent-ask-route
    git push origin main
    ```
 

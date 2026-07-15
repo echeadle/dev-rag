@@ -82,6 +82,10 @@ class SearchMode(str, Enum):
     hybrid = "hybrid"   # dense + BM25 + RRF (default)
 
 
+class AskRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=1000)
+
+
 class SearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=1000)
     domain: str
@@ -327,6 +331,32 @@ async def search(request: SearchRequest) -> dict:
         if use_reranker and request.search_mode == SearchMode.hybrid
         else None,
     }
+
+
+@app.post("/ask")
+async def ask(request: AskRequest) -> dict:
+    """Synthesize an answer via dev_rag.agent's search_corpus-backed Pydantic AI
+    agent. Synchronous (agent.run(), not a stream) — the model is Haiku 4.5 doing
+    short synthesis over a handful of retrieved passages, not long-form generation.
+
+    Built lazily per-request, not at lifespan startup: build_agent() raises
+    UserError immediately if no ANTHROPIC_API_KEY is configured, and /search must
+    stay usable on a keyless server.
+    """
+    if not settings.anthropic_api_key:
+        raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY not configured")
+
+    # Local import breaks a circular import: agent.py does
+    # `from .api import SearchResult, perform_search` at module level.
+    from .agent import build_agent
+
+    agent = build_agent()
+    try:
+        result = await agent.run(request.query)
+    except Exception:
+        log.exception("agent.run failed")
+        raise HTTPException(status_code=502, detail="Agent failed to answer — see server logs")
+    return {"answer": result.output, "query": request.query}
 
 
 @app.get("/documents/{document_id}")
