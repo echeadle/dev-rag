@@ -66,6 +66,23 @@ one-line rule under ## Lessons, so it never happens again.
   a `search_ai` call queue behind an earlier `search_all` call and a curl
   test needed a 90s+ timeout before I traced it to `reranker_candidates`
   vs `force_rerank_candidates`.
+- When building a Pydantic AI agent, a test suite that mocks the model
+  (`FunctionModel`/`TestModel`) and mocks the wrapped tool logic cannot,
+  by construction, catch bugs that only manifest at real model
+  construction (e.g. a provider-prefixed model name silently surviving
+  into `AnthropicModel`, which — unlike `Agent(model=str)` — doesn't
+  strip it) or from actually-untrusted LLM-chosen tool arguments (e.g. an
+  invalid `domain` string). Before declaring an agent branch done, run a
+  cheap no-key/no-network check that exercises exactly the real-model
+  construction path (`AnthropicModel(name, provider=...)`, inspect
+  `.model_name`) and directly call any tool function with adversarial
+  args, not just through the mocked agent loop. Reason: 2026-07-15,
+  `feat/agent-search-corpus` — an advisor pass caught both a wrong
+  `"anthropic:"` prefix on `settings.agent_model` (would have failed on
+  the very first real API call) and a missing domain-validation boundary
+  in `search_corpus` (LLM could pass any string, got a silent empty
+  result instead of a signal to retry) — the full 149-test mocked suite
+  was green through both bugs.
 
 ## Toolchain — uv only
 - **Use `uv` exclusively. Never call `pip` directly.** Use `uv run …`, `uv add …`,
@@ -307,10 +324,74 @@ Ingest tests never load real BGE-M3 — the model is always mocked.
   never been contested before), composite 88.2→87.4 (-0.8). Two
   failures: `devops-020` (pre-existing) and `devops-para-001b` (this
   erosion, new top-1 source).
+- **agent.py — search_corpus capability (2026-07-15,
+  `feat/agent-search-corpus`):** `agent.py` is no longer a stub. Built with
+  Pydantic AI's `capabilities` API (`pydantic-ai==2.5.0`, confirmed
+  installed): one `Capability(id="search_corpus", defer_loading=False)`
+  wrapping the existing hybrid search. `defer_loading=False` was a
+  deliberate call, not an oversight — it's the agent's only tool today, used
+  on essentially every turn, so deferring would add a `load_capability`
+  round trip for zero context savings; revisit once `search_graph` exists
+  as a genuine second bundle. Default model is Haiku 4.5
+  (`settings.agent_model`, cost-optimized); `search_corpus` defaults to
+  RRF-only (`force_rerank=False`, matches ADR-012 and the single-domain MCP
+  tools) so the agent can check multiple domains in one turn without
+  compounding rerank latency. **One real refactor, disclosed and
+  behavior-preserving:** extracted `perform_search()` out of the `/search`
+  route in `api.py` so the OBS-001/OBS-002 canonical-`relevance_score`
+  logic has exactly one implementation shared by the HTTP route and the
+  agent tool, instead of risking a third divergent copy of a bug this
+  project has already been bitten by twice. The `/search` HTTP contract is
+  unchanged — all 146 pre-existing tests pass unmodified. **Real
+  provider construction is lazy by design:** `build_agent()` only
+  constructs `AnthropicProvider` when no `model=` override is passed;
+  empirically confirmed this session that constructing it with an empty
+  `anthropic_api_key` raises `UserError` immediately (not at `.run()`
+  time), and this repo has no `.env` / no `load_dotenv()` call anywhere —
+  so `dev_rag.agent` must stay importable with zero key configured, which
+  the lazy factory guarantees. Tests use `FunctionModel`/`TestModel`
+  overrides exclusively — never touches the real Anthropic API, matching
+  this project's "never load real models in tests" convention. New
+  `tests/test_agent.py` (4 tests): direct `search_corpus` unit test,
+  invalid-domain rejection, `build_agent()` raising cleanly without a key,
+  and a full `FunctionModel` agent run proving the tool-call → synthesis
+  loop actually works. **Advisor review caught two real bugs the mocked
+  test suite structurally couldn't see** (every test either mocks
+  `perform_search` or overrides the model, so nothing ever built the real
+  `AnthropicModel` or called `search_corpus` with an LLM-chosen domain):
+  (1) `settings.agent_model` was `"anthropic:claude-haiku-4-5-20251001"` —
+  wrong for `AnthropicModel`, which (unlike `Agent(model=str)`'s
+  string-inference path) does not strip a provider prefix; the prefixed
+  name would have gone on the wire and been rejected as unknown model.
+  Fixed to the bare name. (2) `search_corpus` had no domain validation
+  (unlike `/search`'s `SearchRequest.domain_must_be_valid`) — an
+  LLM-chosen domain is untrusted input at a system boundary (security.md),
+  and an invalid one silently returned an empty result list with no
+  signal for the model to self-correct on; now raises `ModelRetry` naming
+  the valid domains. 146→150 tests. Runnable via
+  `uv run python -m dev_rag.agent "question"`. **Live-verified against the
+  real Anthropic API (2026-07-15)**, after Ed hit and resolved an
+  unrelated gotcha first: a Claude Pro/Max subscription does NOT fund the
+  Developer API (`ANTHROPIC_API_KEY`) — separate product, separate
+  billing pool; neither pydantic-ai nor Anthropic's raw SDK changes that,
+  since pydantic-ai's `AnthropicProvider` just wraps the same official SDK
+  hitting the same endpoint. (The Claude Agent SDK is the one path that
+  *does* draw from subscription credit instead of API billing, but it's a
+  different, opinionated framework — not a drop-in for pydantic-ai's
+  `capabilities` API — so Ed chose to fund the API key instead of
+  rewriting agent.py.) Once funded: `search_corpus` was called twice by
+  the model (tried more than one search before giving up, per its
+  instructions) for "What is BGE-M3?" and it correctly declined to
+  answer — the `ai` domain's books discuss embeddings/RAG generally but
+  don't name BGE-M3 explicitly, a genuine corpus-coverage gap in the same
+  category as `python-003`'s GIL negative test, not a bug.
+  `search_graph`/`graph.py`/GraphRAG remain deferred and untouched — see
+  the dated update on the GraphRAG scope decision in
+  DEV-RAG-ARCHITECTURE.md.
 
 These are still stubs, not working code:
-- `graph.py`, `agent.py` (unwired — nothing imports it), `mcp/compress.py`
-  (no-op).
+- `graph.py` (unwired — nothing imports it), `mcp/compress.py` (no-op).
+  (`agent.py` is no longer a stub — see the search_corpus entry above.)
 So contract/fixture/test guarantees are **correct by construction**, not yet proven
 against a live pipeline. When implementing a stub, follow the matching `planning/`
 spec and add an **end-to-end test hitting the real endpoint** — hand-written

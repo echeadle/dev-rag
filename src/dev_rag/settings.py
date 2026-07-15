@@ -19,6 +19,14 @@ class Settings(BaseSettings):
 
     # Anthropic
     anthropic_api_key: str = ""
+    # agent.py's synthesis model — cost-optimized default (Haiku 4.5); the
+    # workload is tool-calling + short synthesis over retrieved passages,
+    # not deep reasoning, so a cheaper model was the deliberate call.
+    # Bare model name, NOT "anthropic:..." — this is passed straight to
+    # AnthropicModel(), which (unlike the Agent(model=str) string-inference
+    # path) does not strip a provider prefix; a prefixed name goes on the
+    # wire unchanged and the API rejects it as unknown (verified empirically).
+    agent_model: str = "claude-haiku-4-5-20251001"
 
     # Paths
     chroma_db_path: str = "./chroma_db"

@@ -69,6 +69,12 @@ bottom of this file, in the same commit. Docs-only changes are exempt.
   MCP Registration Review" at the bottom — dev-rag's MCP tools now visible
   in every Claude Code session (not just this repo), a real cwd/relative-path
   bug fixed in the process, backend persistence explicitly deferred.
+- **agent.py / search_corpus capability** (feat/agent-search-corpus): see
+  "Agent.py Search_Corpus Review" at the bottom — `agent.py` is no longer
+  a stub, Pydantic AI `capabilities` API, a disclosed behavior-preserving
+  refactor of `/search` to share canonicalization logic, and a live-API
+  smoke test that's explicitly unverified (no `ANTHROPIC_API_KEY`
+  configured on this machine yet).
 
 ## Steps (generic + Phase 3 example)
 
@@ -1456,6 +1462,139 @@ serve.sh` before each session that wants to search.
    ```bash
    git checkout main
    git merge --no-ff feat/global-mcp-registration
+   git push origin main
+   ```
+
+---
+
+# Agent.py Search_Corpus Review (feat/agent-search-corpus)
+
+**What this review verifies.** `src/dev_rag/agent.py` is no longer a stub —
+it's a real Pydantic AI `Agent` with one `search_corpus` tool, wrapping the
+existing hybrid search pipeline. This is a Phase 8 decomposition (confirmed
+with Ed 2026-07-10, see harness memory): a search-only agent doesn't need
+`graph.py`/GraphRAG to exist first, so it ships now while GraphRAG stays
+deferred and untouched.
+
+**What changed, by category:**
+- **New code:** `src/dev_rag/agent.py` (was a 5-line stub) — one
+  `Capability(id="search_corpus", defer_loading=False)`, a `search_corpus`
+  tool wrapping `perform_search`, a lazy `build_agent(model=None)` factory,
+  and a CLI entrypoint (`python -m dev_rag.agent "question"`). New
+  `settings.agent_model` field (default `claude-haiku-4-5-20251001` — bare
+  name, no `anthropic:` prefix, see the advisor-catch note below).
+- **Refactor, disclosed, behavior-preserving:** `src/dev_rag/api.py`'s
+  `/search` route body (the hybrid/dense/sparse branching that builds the
+  canonical `relevance_score` — OBS-001/OBS-002) was extracted into a plain
+  function `perform_search(query, domain, n_results, search_mode,
+  force_rerank) -> tuple[list[SearchResult], bool]`. The route is now a
+  thin wrapper calling it. This is the one refactor in this branch — done
+  because duplicating that canonicalization logic in `agent.py` would risk
+  a third divergent copy of a bug this project has already shipped twice
+  (rrf_score vs. relevance_score, sigmoid vs. logit units). No HTTP
+  contract change; existing `/search` tests pass unmodified.
+- **Two bugs caught by advisor review, both outside what the mocked test
+  suite could see** (every test either mocks `perform_search` or
+  overrides the model, so nothing built the real `AnthropicModel` or
+  called `search_corpus` with an LLM-chosen domain until this review):
+  1. `agent_model` originally had an `"anthropic:"` prefix — correct for
+     `Agent(model=str)`'s string-inference path (which strips it), wrong
+     for `AnthropicModel(name, provider=...)` (which does not) — the
+     prefixed name would have gone on the wire and been rejected as an
+     unknown model on the very first real call. Verified empirically both
+     before (prefix survives) and after (bare name passes through) the fix.
+  2. `search_corpus` had no domain validation, unlike `/search`'s
+     `SearchRequest.domain_must_be_valid` — an LLM-chosen domain is
+     untrusted input at a system boundary; an invalid one silently
+     returned an empty result list with no signal for the model to
+     self-correct on. Now raises `ModelRetry` naming the valid domains.
+- **Tests:** new `tests/test_agent.py` (4 tests) — direct `search_corpus`
+  unit test (monkeypatched `perform_search`), invalid-domain rejection,
+  `build_agent()` raising `UserError` cleanly with no API key (hardened to
+  also clear `ANTHROPIC_API_KEY` from the environment, not just
+  `settings.anthropic_api_key` — `AnthropicProvider` falls back to the env
+  var), and a full `FunctionModel`-driven agent run proving the tool-call
+  → synthesis loop. 146→150.
+- **Docs:** `docs/RUNBOOK.md` new §5d ("Ask the agent a question"),
+  `agent.py` dropped from the §6 stubs table; `DEV-RAG-ARCHITECTURE.md`'s
+  GraphRAG-scope decision gets a dated update note (not a reversal —
+  `graph.py`/`search_graph` are still deferred); `CLAUDE.md` "Current
+  state" gets the usual dated bullet.
+- **Live end-to-end verified (2026-07-15):** `ANTHROPIC_API_KEY` funded and
+  added to `.env`; `uv run python -m dev_rag.agent "What is BGE-M3?"` ran
+  against the real Anthropic API — `search_corpus` was called twice (the
+  model tried more than one search before giving up, per its
+  instructions), and the agent correctly declined to answer rather than
+  filling in from outside knowledge: the `ai` domain's books discuss
+  embedding models/RAG generally but don't name BGE-M3 explicitly, a
+  genuine corpus-coverage gap, same category as the pre-existing
+  `python-003` GIL negative test — not a bug. First attempt (before
+  funding) failed cleanly with Anthropic's real `400 credit balance too
+  low` error, confirming the key/model-name/provider wiring was correct
+  all along — the earlier fix (dropping the `anthropic:` prefix) was the
+  only code issue, not a red herring.
+
+## Steps
+
+1. `git checkout feat/agent-search-corpus`
+2. `git diff main --stat` — expect `src/dev_rag/agent.py` (rewritten),
+   `src/dev_rag/api.py` (extraction, not a rewrite — diff should show
+   `perform_search` pulled out and `/search` reduced to a thin wrapper,
+   with the actual retrieval logic byte-for-byte unchanged), one new field
+   in `src/dev_rag/settings.py`, new `tests/test_agent.py`, and the doc
+   files listed above. No change to `mcp/` — the MCP server doesn't call
+   the agent (out of scope, see CLAUDE.md's "Current state" entry).
+3. `uv run pytest tests mcp/tests` — expect **150 passed** (was 146). No
+   test should take noticeably longer than before — nothing here loads a
+   real model.
+4. Confirm the agent module is importable and safe with zero API key
+   configured (this is the actual guarantee the lazy `build_agent()`
+   factory exists to provide):
+   ```bash
+   uv run python -c "import dev_rag.agent; print('import ok, no key needed')"
+   ```
+5. Reproduce the tool-calling loop without any real API cost, using the
+   same `FunctionModel` pattern the test suite uses:
+   ```bash
+   uv run python -c "
+   import dev_rag.agent as agent
+   from dev_rag.api import SearchResult
+   from pydantic_ai.models.function import FunctionModel
+   from pydantic_ai.messages import ModelResponse, TextPart, ToolCallPart
+
+   canned = [SearchResult(chunk_id='c1', source='Some Book', domain='ai',
+                           content='RAG combines retrieval and generation.',
+                           relevance_score=0.9)]
+   agent.perform_search = lambda *, query, domain, n_results=5: (canned, False)
+
+   calls = {'n': 0}
+   def model_fn(messages, info):
+       calls['n'] += 1
+       if calls['n'] == 1:
+           return ModelResponse(parts=[ToolCallPart(tool_name='search_corpus',
+               args={'query': 'what is RAG', 'domain': 'ai'})])
+       return ModelResponse(parts=[TextPart(content='RAG combines retrieval and generation [Some Book].')])
+
+   a = agent.build_agent(model=FunctionModel(model_fn))
+   result = a.run_sync('what is RAG?')
+   print('OUTPUT:', result.output)
+   "
+   ```
+   — expect `OUTPUT: RAG combines retrieval and generation [Some Book].`,
+   proving the tool actually gets called and its result actually reaches
+   the final answer.
+6. **If and only if** Ed has added `ANTHROPIC_API_KEY` to `.env`: run the
+   real thing —
+   ```bash
+   uv run python -m dev_rag.agent "What is BGE-M3?"
+   ```
+   — expect a cited answer drawing on the `ai` domain (Bourne's RAG book
+   covers embedding models). If no key is configured, skip this step —
+   it is explicitly not required for the rest of this review to pass.
+7. If satisfied:
+   ```bash
+   git checkout main
+   git merge --no-ff feat/agent-search-corpus
    git push origin main
    ```
 

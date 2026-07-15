@@ -740,6 +740,12 @@ Implement as **Phase 8** after the baseline is established.
 - `GRAPH_ENDPOINT_AVAILABLE = False` stays in `eval/runner.py`
 - GraphRAG spec to be written when Phase 4 baseline is established
 - *Decision made: Athens, June 2026*
+- **Update (2026-07-15):** `agent.py` shipped ahead of `graph.py` — a
+  `search_corpus`-only Pydantic AI agent (see CLAUDE.md "Current state"),
+  since a search-only agent turned out not to depend on GraphRAG existing.
+  This is a decomposition within the still-deferred Phase 8, not a reversal
+  of this decision: `graph.py`, `/search/graph`, and a future `search_graph`
+  capability remain stubbed and gated exactly as decided above.
 
 **Eval harness timing vs. component swaps:** ✅ **DECIDED**  
 Minimum threshold of **25 questions with `expected_source` populated**
