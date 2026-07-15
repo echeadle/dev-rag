@@ -496,6 +496,20 @@ practice — not before.
   92.3 / MRR 89.4). Still open: Geerling (ansible-for-devops.pdf) has no
   positive either — add one when convenient. Shared-topic candidate parked:
   "manage Docker containers using Ansible" (RLA top-1/2 but Geerling competes).
+- [x] **agent.py — search_corpus capability** — ✅ 2026-07-15
+  (`feat/agent-search-corpus`): Pydantic AI `Agent` with one `search_corpus`
+  tool wrapping the hybrid search pipeline (Haiku 4.5, RRF-only by default).
+  Confirmed this doesn't need GraphRAG first — a decomposition within
+  ADR-007's Phase 8, not a reversal. Runnable today as a standalone CLI:
+  `uv run python -m dev_rag.agent "question"`. See `CLAUDE.md`'s
+  current-state log and `docs/BRANCH-REVIEW-CHECKLIST.md` for detail.
+  **Deliberately NOT done, open for later:**
+  - [ ] Wire the agent into `api.py` as an `/ask` route, or into
+    `mcp_server.py` as a new MCP tool — out of scope on the branch,
+    natural next phase once the standalone CLI has been used a while
+    (mirrors the backend-persistence "prove manual first" precedent).
+  - [ ] `search_graph` capability, once `graph.py`/GraphRAG has a spec
+    (see the GraphRAG spec item directly below — still the blocker).
 - [ ] GraphRAG spec — write when Phase 4 baseline is established
 - [ ] Multi-source coverage metric in eval harness
 - [ ] Graph-lift metric (after GraphRAG is implemented)
