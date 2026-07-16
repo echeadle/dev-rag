@@ -80,6 +80,11 @@ bottom of this file, in the same commit. Docs-only changes are exempt.
   existing `search_corpus` agent, an MCP tool considered and explicitly
   deferred (redundant for the Claude Code consumer), live-verified with a
   real answer, a real corpus-gap decline, and a clean 503 on a keyless server.
+- **Claude Code production agents ingest**
+  (feat/ingest-claude-code-production-agents): see "Claude Code Production
+  Agents Ingest Review" at the bottom — 2nd AI-domain book, ran cleanly,
+  empirically confirmed zero retrieval competition with Bourne's book, and
+  the domain's first eval question with a real (non-null) `expected_source`.
 
 ## Steps (generic + Phase 3 example)
 
@@ -1707,6 +1712,99 @@ a deferred, deliberately-skipped option — not an oversight, and not a TODO bug
    ```bash
    git checkout main
    git merge --no-ff feat/agent-ask-route
+   git push origin main
+   ```
+
+---
+
+# Claude Code Production Agents Ingest Review (feat/ingest-claude-code-production-agents)
+
+**What this review verifies.** 2nd book in the `ai` domain — *Claude Code:
+Building Production Agents That Actually Scale* (Thomas De Vos, Leanpub
+2026): agent loop, tools/hooks/skills/MCP servers/plugins, CLI→Claude Agent
+SDK, permissions/sandboxing/secrets/audit trails, evals/observability/cost
+engineering. No pipeline code changes — same ingest command shape as every
+prior book. `data/books/claude-code-building-production-agents-that-actually-work.pdf`
+was added by Ed directly (not fetched or guessed at by Claude).
+
+**What changed:**
+- **Data only:** `data/raw/`, `data/cleaned/`, `data/chunks/`,
+  `data/embeddings/` artifacts for this book (gitignored scratch, not part
+  of the diff), plus the ChromaDB/SQLite stores themselves. 691 chunks,
+  518 pages (501 kept post-clean). `ai` domain now 1299/1299 in_sync
+  (608 Bourne + 691 De Vos).
+- **`data/evaluation/ai_questions.yaml`:** added `ai-008`, the domain's
+  first question with a real (non-null) `expected_source` — until now
+  all 7 questions were written before any AI content existed and gated on
+  nothing so they'd work with whichever book landed first. With a second,
+  topically distinct book now in the domain, a book-specific question
+  becomes meaningful for the first time.
+- **`eval/baselines/2026-07-16_ai_2books_8q.json`:** new official baseline.
+- **Docs:** `docs/TODO.md` (backlog entry checked off), `CLAUDE.md`
+  current-state log, this file.
+
+**Key finding, confirmed empirically rather than just predicted at
+recommendation time:** re-ran all 7 pre-existing `ai_questions.yaml`
+questions after ingest — every one still retrieves top-1 from Bourne's
+book, `chunk_match` unchanged at 80% (same pre-existing ai-005 artifact).
+Zero erosion. This book's subject matter (Claude Code/agent/MCP
+engineering) is genuinely orthogonal to Bourne's RAG-architecture
+questions — they don't compete for the same retrieval slots, unlike the
+overlap seen twice in the Python domain (Five Lines of Code / Practices of
+the Python Pro / Art of Unit Testing all sharing software-craft topics).
+
+**ai-008, live-verified before being written into the fixture (OBS-003
+discipline):** `POST /search {"query": "What governance controls should a
+production Claude Code agent have when connecting to MCP servers?",
+"domain": "ai"}` returned all 5 results from this book; the real top-1
+chunk (`_0183`, Chapter 10 — MCP protocol contract) was grep-confirmed to
+contain both `expected_chunk_contains` terms ("MCP", "permission") before
+the fixture was written, not guessed from the question text. Scores 100%
+R@1/R@3/R@5/MRR, composite 95.1% for the 8-question set.
+
+**Live-verified:**
+- `curl -s http://127.0.0.1:8000/health` — `ai: 1299/1299 in_sync`,
+  `devops`/`python` unaffected at their prior counts.
+- `uv run python eval/run_eval.py --domain ai` — 8 questions, composite
+  95.1%, all R@1/R@3/R@5/MRR at 100% (driven entirely by the one scoreable
+  question, ai-008).
+
+## Steps
+
+1. `git checkout feat/ingest-claude-code-production-agents`
+2. `git diff main --stat` — expect only `data/evaluation/ai_questions.yaml`,
+   `eval/baselines/2026-07-16_ai_2books_8q.json` (new file), `docs/TODO.md`,
+   and `CLAUDE.md`. No `src/` changes.
+3. Confirm the book is in the corpus:
+   ```bash
+   sqlite3 data/dev_rag.db \
+     "SELECT domain, count(*) FROM chunks WHERE status='active' GROUP BY domain;"
+   ```
+   Expect `ai` at 1299 (was 608), `devops` and `python` unchanged.
+4. Start the server and check parity:
+   ```bash
+   uv run uvicorn dev_rag.api:app --host 127.0.0.1 --port 8000 &
+   curl -s http://127.0.0.1:8000/health | python3 -m json.tool
+   ```
+   Expect `"ai": {"chroma_chunks": 1299, "sqlite_chunks": 1299, "in_sync": true}`.
+5. Run the eval set:
+   ```bash
+   uv run python eval/run_eval.py --domain ai
+   ```
+   Expect 8 questions scored, Retrieval@1/@3/@5/MRR all 100%, composite
+   ~95%.
+6. Spot-check the new question directly:
+   ```bash
+   curl -s -X POST http://127.0.0.1:8000/search -H 'Content-Type: application/json' \
+     -d '{"query": "What governance controls should a production Claude Code agent have when connecting to MCP servers?", "domain": "ai", "top_k": 5}' \
+     | python3 -m json.tool
+   ```
+   Expect all 5 results sourced from
+   `claude-code-building-production-agents-that-actually-work.pdf`.
+7. If satisfied:
+   ```bash
+   git checkout main
+   git merge --no-ff feat/ingest-claude-code-production-agents
    git push origin main
    ```
 

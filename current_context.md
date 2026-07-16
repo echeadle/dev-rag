@@ -2,47 +2,50 @@
 _Last updated: 2026-07-16_
 
 ## Active File
-None — `main` is clean. `feat/agent-ask-route` reviewed, merged
-(`--no-ff`, commit `303b5e2`), pushed to `origin/main`, and deleted
-locally. No feature branch currently checked out.
+`feat/ingest-claude-code-production-agents` — not yet merged. Ready for
+Ed's review via `docs/BRANCH-REVIEW-CHECKLIST.md`'s "Claude Code
+Production Agents Ingest Review" section.
 
 ## Current Step
-`agent.py`'s `search_corpus` agent is now reachable over HTTP: `POST /ask`
-in `api.py` (`AskRequest` → `await agent.run(query)` → `{"answer",
-"query"}`), built lazily per-request via a function-local import to avoid
-a circular import with `agent.py` and to keep `/search` usable on a
-keyless server. An MCP `ask_dev_rag` tool was considered and
-**deliberately not built** — Ed's call via AskUserQuestion: the MCP
-consumer (Claude Code) is already an agent that can call the existing
-`search_*` MCP tools and synthesize with its own reasoning, so a tool
-delegating synthesis to a Haiku sub-agent would be redundant for that
-consumer and cost an extra funded API call. 150→153 tests
-(`tests/test_ask_route.py`). Live-verified against the real Anthropic
-API: a real Docker bind-mounts question got a cited answer; the known
-BGE-M3 corpus-gap question got the same honest decline as the CLI; a
-keyless restart kept `/health`/`/search` healthy while `/ask` returned a
-clean 503. Full detail in `docs/BRANCH-REVIEW-CHECKLIST.md`'s "Agent /ask
-Route Review" and `CLAUDE.md`'s current-state log.
+2nd book in the `ai` domain ingested: *Claude Code: Building Production
+Agents That Actually Scale* (Thomas De Vos, Leanpub 2026) — Ed dropped the
+PDF into `data/books/` himself. 691 chunks, 518 pages (501 kept), `ai`
+domain now 1299/1299 in_sync (Bourne 608 + this book 691). Stage-8 verify
+passed first try (dist=0.342). Re-ran all 7 existing `ai_questions.yaml`
+questions — unchanged, still top-1 Bourne, zero erosion: this book's
+subject (Claude Code/agent/MCP engineering) is genuinely orthogonal to
+Bourne's RAG-theory content, confirmed empirically not just predicted.
+Added `ai-008`, the domain's first eval question with a real
+`expected_source` (grep-verified against the live top-1 chunk before
+writing the fixture) — scores 100% R@1/R@3/R@5/MRR, composite 95.1%. New
+baseline `eval/baselines/2026-07-16_ai_2books_8q.json`. No `src/` changes
+— data + eval fixture only, same shape as every prior ingest branch. Full
+detail in `docs/BRANCH-REVIEW-CHECKLIST.md` and `CLAUDE.md`'s
+current-state log.
 
 ## Next Action
-Nothing in progress — this slice is fully closed (merged, pushed, branch
-cleaned up). Candidates for next session, Ed's call which to pick up:
-(a) resume corpus building from `docs/TODO.md`'s backlog, or (b) write
-the GraphRAG spec so `graph.py`/`search_graph` can finally start. The MCP
-`ask_dev_rag` tool is a deliberately-parked option, not a TODO bug —
-revisit only if a real need for it shows up (e.g. a non-Claude-Code MCP
-consumer).
+Ed reviews the branch (steps in `docs/BRANCH-REVIEW-CHECKLIST.md`'s new
+section) and decides whether to merge. After merge/cleanup, the same two
+standing candidates from before this ingest are still open: (a) continue
+corpus building (AI domain backlog now has Rothman → Kimothi → Alto in
+that order, or an Ansible shelf-title to confirm for DevOps), or (b)
+write the GraphRAG spec so `graph.py`/`search_graph` can start.
 
 ## Done When
-N/A — no task in progress.
+- [x] Book ingested, stage-8 verify passed
+- [x] Existing eval questions re-checked for regressions (none)
+- [x] Added-value eval question added and verified
+- [x] Baseline promoted
+- [x] Docs updated (TODO.md, CLAUDE.md, BRANCH-REVIEW-CHECKLIST.md)
+- [ ] Ed reviews and merges the branch
 
 ## Blockers
-None. `ANTHROPIC_API_KEY` is funded in `.env` and confirmed working via
-both the CLI and the `/ask` route.
+None. Waiting on Ed's review/merge decision.
 
 ## Housekeeping (optional, not blocking)
-None outstanding. No server running in the background.
+None outstanding. Background uvicorn server (started for eval testing) was
+stopped cleanly (killed by the PID captured at launch, per the CLAUDE.md
+Lessons rule).
 
 ## Phase
-`agent.py` Phase 8 decomposition — `/ask` HTTP wiring slice complete and
-merged. No active implementation phase.
+AI-domain corpus building — 2nd book ingested, branch open for review.

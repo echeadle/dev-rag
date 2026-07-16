@@ -299,18 +299,46 @@ Books and sources to ingest as the system comes online:
   co-occurrence artifact, not a coverage gap (376 "retrieval" mentions
   in the book overall). First AI baseline:
   `eval/baselines/2026-07-09_ai_1book_7q.json`.
+- [x] Claude Code: Building Production Agents That Actually Scale (De Vos,
+  Leanpub 2026) — ✅ 2026-07-16 (`feat/ingest-claude-code-production-agents`):
+  691 chunks, 518 pages (501 kept post-clean), `ai` domain now 1299/1299
+  in_sync (2nd book, alongside Bourne). Stage-8 verify passed first try
+  (dist=0.342, query "What are Claude Code hooks and how do they work?").
+  **Genuinely orthogonal content, confirmed empirically, not just
+  predicted:** all 7 existing `ai_questions.yaml` questions re-ran
+  unchanged (still top-1 Bourne, chunk_match 80% flat, zero erosion) —
+  this book's content (agent loop, tools/hooks/skills/MCP servers/plugins,
+  permissions/sandboxing/audit trails, evals/observability/cost
+  engineering) doesn't compete with Bourne's RAG-theory questions. Added
+  **ai-008**, the domain's first question with a real (non-null)
+  `expected_source` — targets this book's unique MCP-governance content,
+  grep-verified against the real top-1 chunk, scores 100% R@1/R@3/R@5/MRR.
+  New baseline `eval/baselines/2026-07-16_ai_2books_8q.json` (composite
+  95.1%, up from n/a since this is the first scoreable question in the
+  domain).
 - [ ] RAG-Driven Generative AI (Rothman, Packt 2024) — **recommended purchase**;
   advanced RAG patterns, adaptive RAG with human feedback, knowledge graphs;
   directly applicable to dev-rag architecture decisions
 - [ ] A Simple Guide to Retrieval Augmented Generation (Kimothi, Manning) —
   **recommended purchase**; foundational RAG reference, clean structure,
   good companion for the Python AI agent book
+- [ ] Building LLM Powered Applications (Alto, Packt 2024) — **recommended
+  purchase, ranked behind Rothman/Kimothi**; broad LangChain-flavored survey
+  (prompt engineering, RAG basics, fine-tuning, evaluation, multi-agent
+  systems). Agent-design chapters are the most relevant part given
+  `agent.py`'s Pydantic AI capability is live, but the RAG-fundamentals
+  chapters risk the same shared-topic overlap already seen twice in the
+  Python domain (Five Lines of Code / Practices of the Python Pro / Art of
+  Unit Testing) — Bourne's book covers similar ground. Rothman's advanced
+  RAG/knowledge-graph focus is a tighter match for the pending GraphRAG spec
+  decision, hence lower priority here.
 - [ ] Using Stable Diffusion with Python (Zhu, Packt) — **already owned**;
   covers diffusers, LoRAs, ControlNet, VRAM management, prompt engineering;
   relevant once Oryx Pro is set up for local image generation;
   **low priority** — ingest after RAG books are working
-- [ ] Ingest order: Bourne first (already owned), then Rothman, then Kimothi,
-  then Stable Diffusion when Oryx Pro is set up
+- [ ] Ingest order: Bourne first (already owned) ✅, De Vos (Claude Code
+  agents) ✅, then Rothman, then Kimothi, then Alto, then Stable Diffusion
+  when Oryx Pro is set up
 - [x] Five Lines of Code (Clausen) — ✅ ingested 2026-07-08 (Phase 5, 532
   chunks). Correction: code examples are **TypeScript, not Python**
   (this entry previously said "with Python examples" — verified wrong
