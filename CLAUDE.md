@@ -419,6 +419,27 @@ Ingest tests never load real BGE-M3 — the model is always mocked.
   the same honest decline as the CLI; restarting the server with
   `ANTHROPIC_API_KEY=""` kept `/health`/`/search` at `"status": "ok"` while
   `/ask` returned a clean `503`, not a crash.
+- **Claude Code: Building Production Agents ingest — 2nd AI-domain book
+  (2026-07-16, `feat/ingest-claude-code-production-agents`):** De Vos's
+  Leanpub book on production Claude Code agents (agent loop,
+  tools/hooks/skills/MCP servers/plugins, permissions/sandboxing/audit
+  trails, evals/observability/cost engineering). No pipeline code changes.
+  691 chunks (518 pages, 501 kept post-clean); `ai` domain now 1299/1299
+  in_sync. Stage-8 verify passed first try (dist=0.342). **Orthogonal
+  content confirmed empirically, not just predicted at recommendation
+  time:** all 7 existing `ai_questions.yaml` questions (all gated on
+  `expected_source: null`, written for Bourne's RAG-theory content) re-ran
+  unchanged — still top-1 Bourne, chunk_match 80% flat, zero erosion. This
+  book's subject matter (agent/MCP engineering) simply doesn't compete
+  with RAG-architecture questions for the same retrieval slots. Added
+  **ai-008**, the domain's first question with a real (non-null)
+  `expected_source` — a live `/search` query top-5'd entirely from this
+  book, grep-verified the actual top-1 chunk contains both required terms
+  before writing the fixture (not guessed from the title — the same
+  OBS-003 discipline every prior eval addition has followed). Scores 100%
+  R@1/R@3/R@5/MRR. New baseline `eval/baselines/2026-07-16_ai_2books_8q.json`
+  (composite 95.1%). No `src/` changes — data + eval fixture only, same
+  shape as every prior book-ingest branch.
 
 These are still stubs, not working code:
 - `graph.py` (unwired — nothing imports it), `mcp/compress.py` (no-op).

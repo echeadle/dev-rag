@@ -19,6 +19,15 @@
 # mentions of "retrieval" overall, just not co-located with "generation"
 # in the specific top-ranked chunk (a RAGAS-metrics passage that leans
 # generation-side). Left as-is rather than loosening the check.
+#
+# NOTE (2026-07-16): 2nd AI-domain book ingested — Claude Code: Building
+# Production Agents That Actually Scale (De Vos, Leanpub 2026), 691 chunks.
+# Genuinely orthogonal content vs. Bourne's RAG-theory book (agent/MCP/hook
+# engineering, not RAG architecture) — all 7 existing questions re-ran
+# unchanged (still top-1 Bourne, chunk_match 80% flat), confirming zero
+# retrieval competition. ai-008 below is the first question with a real
+# expected_source, targeting this book's unique content (matches the
+# devops-034 "added value" precedent).
 
 # ---------------------------------------------------------------------------
 # FACTUAL (ai-001, ai-002)
@@ -151,3 +160,29 @@
     Production reliability question. Should surface grounding techniques,
     source attribution, and the negative-precision metric. Directly maps
     to our no_answer eval question category and the hallucination_rate metric.
+
+# ---------------------------------------------------------------------------
+# AGENT ENGINEERING (ai-008) — De Vos, added 2026-07-16
+# ---------------------------------------------------------------------------
+
+- id: ai-008
+  question: "What governance controls should a production Claude Code agent have when connecting to MCP servers?"
+  domain: ai
+  category: architecture
+  failure_mode: production_vs_tutorial_confusion
+  expected_source: claude-code-building-production-agents-that-actually-work.pdf
+  expected_chunk_contains:
+    - "MCP"
+    - "permission"
+  no_answer: false
+  requires_graph: false
+  requires_multi_source: false
+  notes: >
+    First AI-domain question with a real expected_source (2 books now
+    competing gives this signal for the first time). Live-verified: all
+    top-5 hybrid results come from this book; top-1 is chunk _0183
+    (Chapter 10, MCP protocol contract — authentication/permission),
+    grep-confirmed to contain both required terms. Targets this book's
+    unique content (MCP governance, hooks, permissions, sandboxing) which
+    Bourne's book never covers — the orthogonal-content thesis from the
+    ingest note above.
